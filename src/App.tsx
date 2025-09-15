@@ -3,7 +3,6 @@ import { Routes, Route, useRoutes } from "react-router-dom";
 import Home from "./components/home";
 import ClientList from "./components/client/ClientList";
 import ClientPortal from "./components/client/ClientPortal";
-import AgentDashboard from "./components/dashboard/AgentDashboard";
 import NotificationSystem from "./components/notifications/NotificationSystem";
 import SubscriptionManagement from "./components/subscription/SubscriptionManagement";
 import TimelineBuilder from "./components/timeline/TimelineBuilder";
@@ -18,7 +17,6 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/client-list" element={<ClientList />} />
           <Route path="/client-portal" element={<ClientPortal />} />
-          <Route path="/dashboard" element={<AgentDashboard />} />
           <Route path="/notifications" element={<NotificationSystem />} />
           <Route path="/subscription" element={<SubscriptionManagement />} />
           <Route path="/timeline" element={<TimelineBuilder />} />

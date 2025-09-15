@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,92 +8,142 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Bell,
-  Plus,
-  Clock,
   Calendar,
+  ChevronRight,
+  Clock,
   DollarSign,
-  Users,
   Home as HomeIcon,
+  Plus,
+  Users,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+
+// ---- Types ----
+interface Client {
+  id: string;
+  name: string;
+  avatar?: string;
+  property: string;
+  transactionType: string;
+  progress: number;
+  status: "active" | "pending" | "completed";
+  value: number;
+  nextTask: string;
+  dueDate: string;
+}
+
+interface Transaction {
+  id: string;
+  title: string;
+  type: string;
+  progress: number;
+  client: string;
+  dueDate: string;
+}
 
 const Home = () => {
-  // Mock data for demonstration
-  const clients = [
+  const [sortBy, setSortBy] = useState<string>("dueDate");
+
+  // Mock data for clients
+  const clients: Client[] = [
     {
-      id: 1,
-      name: "Sarah Chen",
-      property: "Clementi HDB, 4-Room",
-      status: "In Progress",
-      progress: 65,
-      nextTask: "Submit Option Fee by 15 May",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-      type: "HDB Purchase",
+      id: "1",
+      name: "John Smith",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=john",
+      property: "123 Orchard Road, #05-01",
+      transactionType: "HDB Purchase",
+      progress: 45,
+      status: "active",
+      value: 550000,
+      nextTask: "Submit Option to Purchase",
+      dueDate: "2023-06-15",
     },
     {
-      id: 2,
-      name: "Michael Tan",
-      property: "The Clement Canopy, 2-Bedroom",
-      status: "Early Stage",
-      progress: 25,
-      nextTask: "Property Viewing on 12 May",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
-      type: "Condo Sale",
-    },
-    {
-      id: 3,
-      name: "Priya Singh",
-      property: "Tampines GreenVines, 5-Room",
-      status: "Completing",
-      progress: 85,
-      nextTask: "Final Walkthrough on 10 May",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Priya",
-      type: "HDB Sale",
+      id: "2",
+      name: "Sarah Lee",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah",
+      property: "456 Marina Bay, #12-08",
+      transactionType: "Condo Sale",
+      progress: 75,
+      status: "active",
+      value: 1200000,
+      nextTask: "Prepare for Handover",
+      dueDate: "2023-06-10",
     },
   ];
 
-  const templates = [
-    { id: 1, name: "HDB Purchase", tasks: 12, days: 90 },
-    { id: 2, name: "Condo Sale", tasks: 15, days: 120 },
-    { id: 3, name: "Commercial Lease", tasks: 10, days: 60 },
-    { id: 4, name: "Private Property Purchase", tasks: 14, days: 100 },
+  // Mock data for recent transactions
+  const recentTransactions: Transaction[] = [
+    {
+      id: "t1",
+      title: "Option Fee Received",
+      type: "HDB Purchase",
+      progress: 30,
+      client: "John Smith",
+      dueDate: "2023-06-08",
+    },
+    {
+      id: "t2",
+      title: "Valuation Completed",
+      type: "Condo Sale",
+      progress: 60,
+      client: "Sarah Lee",
+      dueDate: "2023-06-07",
+    },
   ];
+
+  // Sorting logic
+  const sortedClients = [...clients].sort((a, b) => {
+    if (sortBy === "dueDate") {
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    } else if (sortBy === "value") {
+      return b.value - a.value;
+    }
+    return 0;
+  });
+
+  // Stats
+  const activeCount = clients.filter((c) => c.status === "active").length;
+  const pendingCount = clients.filter((c) => c.status === "pending").length;
+  const completedCount = clients.filter((c) => c.status === "completed").length;
+  const totalValue = clients.reduce((sum, client) => sum + client.value, 0);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Completed":
-        return "bg-green-100 text-green-800";
-      case "In Progress":
-        return "bg-blue-100 text-blue-800";
-      case "Early Stage":
-        return "bg-purple-100 text-purple-800";
-      case "Completing":
-        return "bg-amber-100 text-amber-800";
+      case "active":
+        return "bg-green-500";
+      case "pending":
+        return "bg-yellow-500";
+      case "completed":
+        return "bg-blue-500";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500";
     }
   };
 
-  const getProgressColor = (progress: number) => {
-    if (progress < 30) return "bg-purple-500";
-    if (progress < 70) return "bg-blue-500";
-    return "bg-amber-500";
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+    <div className="bg-background min-h-screen">
+      {/* ---- Header (from Home.tsx) ---- */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <HomeIcon className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold text-primary">PropAgent</h1>
           </div>
-
           <div className="flex items-center space-x-4">
             <Badge variant="outline" className="bg-primary/10 text-primary">
               Premium Subscription
@@ -110,198 +159,236 @@ const Home = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {/* Dashboard Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Agent Dashboard
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Manage your clients and property transactions
-            </p>
-          </div>
-          <div className="mt-4 md:mt-0 flex space-x-3">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> New Timeline
-            </Button>
-            <Button variant="outline">
-              <Users className="mr-2 h-4 w-4" /> Add Client
-            </Button>
-          </div>
+      {/* ---- Main body (from AgentDashboard) ---- */}
+      <main className="max-w-7xl mx-auto p-6 space-y-6">
+        {/* Welcome */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
+          <p className="text-muted-foreground">
+            Manage your clients and property transactions
+          </p>
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-md">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">
-                    Active Clients
-                  </p>
-                  <h3 className="text-2xl font-bold text-gray-900">12</h3>
-                </div>
-              </div>
-            </CardContent>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Active Clients
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">{activeCount}</CardContent>
           </Card>
-
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-md">
-                  <Clock className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">
-                    Ongoing Transactions
-                  </p>
-                  <h3 className="text-2xl font-bold text-gray-900">8</h3>
-                </div>
-              </div>
-            </CardContent>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Pending Transactions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">{pendingCount}</CardContent>
           </Card>
-
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-amber-100 rounded-md">
-                  <Calendar className="h-6 w-6 text-amber-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">
-                    Upcoming Tasks
-                  </p>
-                  <h3 className="text-2xl font-bold text-gray-900">23</h3>
-                </div>
-              </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Completed Deals
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">{completedCount}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Transaction Value
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              ${totalValue.toLocaleString()}
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Dashboard Content */}
-        <Tabs defaultValue="clients" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="clients">My Clients</TabsTrigger>
-            <TabsTrigger value="templates">Timeline Templates</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="clients" className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Client Transactions</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Clock className="mr-2 h-4 w-4" /> Sort by Date
-                </Button>
-                <Button variant="outline" size="sm">
-                  <DollarSign className="mr-2 h-4 w-4" /> Sort by Value
-                </Button>
-              </div>
+        {/* Client Management */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Client Management</CardTitle>
+              <CardDescription>Quick access to your top clients</CardDescription>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {clients.map((client) => (
-                <Card key={client.id} className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center">
-                        <Avatar className="h-10 w-10 mr-3">
-                          <AvatarImage src={client.avatar} />
-                          <AvatarFallback>
-                            {client.name.substring(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <CardTitle className="text-lg">
-                            {client.name}
-                          </CardTitle>
-                          <CardDescription className="text-xs mt-1">
-                            {client.property}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <Badge className={getStatusColor(client.status)}>
-                        {client.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Progress</span>
-                        <span>{client.progress}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${getProgressColor(client.progress)}`}
-                          style={{ width: `${client.progress}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Clock className="h-5 w-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">Next Task</p>
-                        <p className="text-sm text-gray-600">
-                          {client.nextTask}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="border-t bg-gray-50 flex justify-between">
-                    <Badge variant="outline">{client.type}</Badge>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link to={`/client/${client.id}`}>View Timeline</Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="templates" className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Available Templates</h2>
+            <div className="flex items-center gap-2">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dueDate">Due Date</SelectItem>
+                  <SelectItem value="value">Transaction Value</SelectItem>
+                </SelectContent>
+              </Select>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Create Custom Template
+                <Plus className="mr-2 h-4 w-4" /> Add Client
               </Button>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {templates.map((template) => (
-                <Card key={template.id} className="overflow-hidden">
-                  <CardHeader>
-                    <CardTitle>{template.name}</CardTitle>
-                    <CardDescription>
-                      Standard timeline template
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between text-sm mb-4">
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1 text-gray-500" />
-                        <span>{template.tasks} Tasks</span>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {sortedClients.map((client) => (
+                <div
+                  key={client.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <Avatar>
+                      <AvatarImage src={client.avatar} alt={client.name} />
+                      <AvatarFallback>
+                        {client.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{client.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {client.property}
                       </div>
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                        <span>~{template.days} Days</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline">{client.transactionType}</Badge>
+                        <div className="flex items-center gap-1">
+                          <div
+                            className={`w-2 h-2 rounded-full ${getStatusColor(
+                              client.status
+                            )}`}
+                          ></div>
+                          <span className="text-xs capitalize">
+                            {client.status}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                  <CardFooter className="border-t bg-gray-50">
-                    <Button className="w-full" variant="outline" asChild>
-                      <Link to={`/templates/${template.id}`}>Use Template</Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="text-sm">
+                      <span className="font-medium">Next: </span>
+                      {client.nextTask}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      Due: {new Date(client.dueDate).toLocaleDateString()}
+                    </div>
+                    <div className="w-32">
+                      <Progress value={client.progress} className="h-1.5" />
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
             </div>
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity + Subscription */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest updates</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="transactions">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                  <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                </TabsList>
+                <TabsContent value="transactions" className="space-y-4 mt-4">
+                  {recentTransactions.map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex flex-col gap-2 p-3 border rounded-lg"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">
+                            {transaction.title}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {transaction.client}
+                          </div>
+                        </div>
+                        <Badge variant="outline">{transaction.type}</Badge>
+                      </div>
+                      <Progress
+                        value={transaction.progress}
+                        className="h-1.5"
+                      />
+                      <div className="text-xs text-muted-foreground flex items-center">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Due: {new Date(transaction.dueDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </TabsContent>
+                <TabsContent value="notifications" className="space-y-4 mt-4">
+                  <div className="flex flex-col gap-2 p-3 border rounded-lg">
+                    <div className="font-medium">Document Uploaded</div>
+                    <div className="text-xs text-muted-foreground">
+                      Sarah Lee uploaded Option to Purchase document
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      2 hours ago
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 border rounded-lg">
+                    <div className="font-medium">Task Completed</div>
+                    <div className="text-xs text-muted-foreground">
+                      John Smith completed Bank Loan Application
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Yesterday
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscription Status</CardTitle>
+              <CardDescription>Your current plan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="font-medium">Premium Plan</div>
+                  <Badge>Active</Badge>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Clients</span>
+                    <span className="font-medium">{clients.length} / 25</span>
+                  </div>
+                  <Progress
+                    value={(clients.length / 25) * 100}
+                    className="h-1.5"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Timelines</span>
+                    <span className="font-medium">5 / 15</span>
+                  </div>
+                  <Progress value={(5 / 15) * 100} className="h-1.5" />
+                </div>
+                <Button variant="outline" className="w-full">
+                  Manage Subscription
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </main>
     </div>
   );

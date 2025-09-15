@@ -151,15 +151,18 @@ const Home = () => {
             <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5" />
             </Button>
-            <Avatar>
-              <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" />
-              <AvatarFallback>JD</AvatarFallback>
-            </Avatar>
+            {/* (1) Avatar leads to profile */}
+            <Link to="/profile">
+              <Avatar className="cursor-pointer hover:ring-2 hover:ring-primary">
+                <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" />
+                <AvatarFallback>JD</AvatarFallback>
+              </Avatar>
+            </Link>
           </div>
         </div>
       </header>
 
-      {/* ---- Main body (from AgentDashboard) ---- */}
+      {/* ---- Main body ---- */}
       <main className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Welcome */}
         <div>
@@ -232,57 +235,59 @@ const Home = () => {
           <CardContent>
             <div className="space-y-4">
               {sortedClients.map((client) => (
-                <div
+                // (2) Client row links to timeline
+                <Link
                   key={client.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  to={`/timeline/${client.id}`}
+                  className="block"
                 >
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={client.avatar} alt={client.name} />
-                      <AvatarFallback>
-                        {client.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{client.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {client.property}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline">{client.transactionType}</Badge>
-                        <div className="flex items-center gap-1">
-                          <div
-                            className={`w-2 h-2 rounded-full ${getStatusColor(
-                              client.status
-                            )}`}
-                          ></div>
-                          <span className="text-xs capitalize">
-                            {client.status}
-                          </span>
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-4">
+                      <Avatar>
+                        <AvatarImage src={client.avatar} alt={client.name} />
+                        <AvatarFallback>
+                          {client.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{client.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {client.property}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline">{client.transactionType}</Badge>
+                          <div className="flex items-center gap-1">
+                            <div
+                              className={`w-2 h-2 rounded-full ${getStatusColor(
+                                client.status
+                              )}`}
+                            ></div>
+                            <span className="text-xs capitalize">
+                              {client.status}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="text-sm">
+                        <span className="font-medium">Next: </span>
+                        {client.nextTask}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Due: {new Date(client.dueDate).toLocaleDateString()}
+                      </div>
+                      <div className="w-32">
+                        <Progress value={client.progress} className="h-1.5" />
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="text-sm">
-                      <span className="font-medium">Next: </span>
-                      {client.nextTask}
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      Due: {new Date(client.dueDate).toLocaleDateString()}
-                    </div>
-                    <div className="w-32">
-                      <Progress value={client.progress} className="h-1.5" />
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon">
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>
@@ -382,8 +387,9 @@ const Home = () => {
                   </div>
                   <Progress value={(5 / 15) * 100} className="h-1.5" />
                 </div>
-                <Button variant="outline" className="w-full">
-                  Manage Subscription
+                {/* (3) Manage Subscription links to subscription page */}
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/subscription">Manage Subscription</Link>
                 </Button>
               </div>
             </CardContent>

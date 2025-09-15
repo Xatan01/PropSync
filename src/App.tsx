@@ -17,7 +17,7 @@ function App() {
       <>
         <Routes>
           {/* Core pages */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Register />} />
           <Route path="/client-list" element={<ClientList />} />
           <Route path="/client-portal" element={<ClientPortal />} />
           <Route path="/notifications" element={<NotificationSystem />} />
@@ -26,6 +26,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/home" element={<Home />} />
           {/* Optional: catch-all route for 404 */}
           <Route path="*" element={<p>404 - Page Not Found</p>} />
         </Routes>

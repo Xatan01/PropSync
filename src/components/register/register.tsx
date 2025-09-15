@@ -6,21 +6,49 @@ import { Button } from "@/components/ui/button";
 import { Mail, Lock, User } from "lucide-react";
 import { Link } from "react-router-dom";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
 const Register = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Register with:", formData);
-    // 🔗 Hook up with backend register endpoint here
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData), // 👈 includes name, email, password
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Registration failed");
+      }
+
+      const data = await response.json();
+      console.log("✅ Registration successful:", data);
+
+      alert("Check your email for a confirmation link.");
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("❌ Registration error:", err);
+      alert("Registration failed: " + (err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -76,8 +104,8 @@ const Register = () => {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full">
-              Create Account
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Registering..." : "Create Account"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
               Already have an account?{" "}
@@ -92,4 +120,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default Register;  

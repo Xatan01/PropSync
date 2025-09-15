@@ -4,16 +4,48 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login with:", { email, password });
-    // 🔗 Hook up with backend login endpoint here
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Login failed");
+      }
+
+      const data = await response.json();
+      console.log("✅ Login successful:", data);
+
+      // Save token (demo: localStorage; prod: HttpOnly cookies are safer)
+      localStorage.setItem("access_token", data.access_token);
+
+      // Redirect to home page
+      navigate("/home");
+    } catch (err) {
+      console.error("❌ Login error:", err);
+      alert("Login failed: " + (err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,8 +84,8 @@ const Login = () => {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
               Don’t have an account?{" "}

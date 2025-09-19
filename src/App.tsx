@@ -9,6 +9,7 @@ import TimelineBuilder from "./components/timeline/TimelineBuilder";
 import Profile from "./components/profile/Profile";
 import Login from "./components/login/Login";
 import Register from "./components/register/Register";
+import Confirm from "./components/confirm/Confirm";
 import routes from "tempo-routes";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/confirm" element={<Confirm />} />
           <Route path="/home" element={<Home />} />
           {/* Optional: catch-all route for 404 */}
           <Route path="*" element={<p>404 - Page Not Found</p>} />

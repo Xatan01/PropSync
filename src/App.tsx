@@ -10,6 +10,8 @@ import Profile from "./components/profile/Profile";
 import Login from "./components/login/Login";
 import Register from "./components/register/Register";
 import Confirm from "./components/confirm/Confirm";
+import ResetPassword from "./components/ResetPassword/ResetPassword";
+import ForgotPassword from "./components/ForgetPassword/ForgetPassword";
 import routes from "tempo-routes";
 
 function App() {
@@ -28,6 +30,8 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/confirm" element={<Confirm />} />
+          <Route path ="/reset-password" element={<ResetPassword />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/home" element={<Home />} />
           {/* Optional: catch-all route for 404 */}
           <Route path="*" element={<p>404 - Page Not Found</p>} />

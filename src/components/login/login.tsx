@@ -21,24 +21,15 @@ const Login = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Login failed");
-      }
+      if (!response.ok) throw new Error(data.detail || "Login failed");
 
       console.log("✅ Login successful:", data);
-
-      // Save token (demo: localStorage; prod: HttpOnly cookies are safer)
       localStorage.setItem("access_token", data.access_token);
-
-      // Redirect to home page
       navigate("/home");
     } catch (err) {
       console.error("❌ Login error:", err);
@@ -56,7 +47,7 @@ const Login = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="email">Email</Label>
               <div className="flex items-center border rounded-md px-2">
                 <Mail className="h-4 w-4 text-muted-foreground mr-2" />
@@ -70,7 +61,8 @@ const Login = () => {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+
+            <div>
               <Label htmlFor="password">Password</Label>
               <div className="flex items-center border rounded-md px-2">
                 <Lock className="h-4 w-4 text-muted-foreground mr-2" />
@@ -84,15 +76,25 @@ const Login = () => {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+
+            <Button type="submit" className="w-full bg-primary text-white" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
-              Don’t have an account?{" "}
-              <Link to="/register" className="text-primary hover:underline">
-                Register
-              </Link>
-            </p>
+
+            {/* ✅ Subtext links below */}
+            <div className="mt-4 text-sm text-center space-y-2">
+              <p>
+                <Link to="/forgot-password" className="text-primary underline hover:text-primary/80">
+                  Forgot your password?
+                </Link>
+              </p>
+              <p className="text-gray-600">
+                Don’t have an account?{" "}
+                <Link to="/register" className="text-primary underline hover:text-primary/80">
+                  Register
+                </Link>
+              </p>
+            </div>
           </form>
         </CardContent>
       </Card>

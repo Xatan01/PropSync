@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import CooldownButton from "@/components/ui/CooldownButton";
+import CooldownLink from "@/components/ui/CooldownLink";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -11,14 +12,20 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
 
-  const email = localStorage.getItem("reset_email") || "";
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("reset_email");
+    if (!savedEmail) {
+      alert("⚠️ No email found. Please start from Forgot Password.");
+      navigate("/forgot-password");
+    } else {
+      setEmail(savedEmail);
+    }
+  }, [navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     try {
       const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: "POST",
@@ -34,8 +41,19 @@ const ResetPassword = () => {
       navigate("/login");
     } catch (err) {
       alert("❌ Error: " + (err as Error).message);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      alert("📩 Reset code resent to your email.");
+    } catch {
+      alert("❌ Could not resend code. Try again later.");
     }
   };
 
@@ -67,10 +85,14 @@ const ResetPassword = () => {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Resetting..." : "Reset Password"}
-            </Button>
+            <CooldownButton type="submit" onClick={handleSubmit} className="w-full">
+              Reset Password
+            </CooldownButton>
           </form>
+
+          <p className="text-sm text-center mt-2">
+            Didn’t get the code? <CooldownLink onClick={handleResend}>Resend</CooldownLink>
+          </p>
         </CardContent>
       </Card>
     </div>

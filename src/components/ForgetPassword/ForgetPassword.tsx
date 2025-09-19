@@ -3,19 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import CooldownButton from "@/components/ui/CooldownButton";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     try {
       const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
         method: "POST",
@@ -27,12 +24,10 @@ const ForgotPassword = () => {
       if (!response.ok) throw new Error(data.detail || "Request failed");
 
       localStorage.setItem("reset_email", email);
-      alert("📩 We’ve sent you a reset code.");
+      alert("📩 Reset code sent to your email.");
       navigate("/reset-password");
     } catch (err) {
       alert("❌ Error: " + (err as Error).message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -54,9 +49,9 @@ const ForgotPassword = () => {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Sending..." : "Send Reset Code"}
-            </Button>
+            <CooldownButton type="submit" onClick={handleSubmit} className="w-full">
+              Send Reset Code
+            </CooldownButton>
           </form>
         </CardContent>
       </Card>

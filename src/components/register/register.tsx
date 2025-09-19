@@ -3,24 +3,21 @@ import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import CooldownButton from "@/components/ui/CooldownButton";
 import { Mail, Lock, User } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const Register = () => {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
@@ -31,14 +28,10 @@ const Register = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Registration failed");
 
-      console.log("✅ Registration:", data);
-
       localStorage.setItem("pending_token", data.pending_token);
       navigate("/confirm");
     } catch (err) {
       alert("❌ Registration failed: " + (err as Error).message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -98,15 +91,14 @@ const Register = () => {
               </div>
             </div>
 
-            <Button
+            <CooldownButton
               type="submit"
+              onClick={handleSubmit}
               className="w-full bg-primary text-white hover:bg-primary/90"
-              disabled={loading}
             >
-              {loading ? "Registering..." : "Create Account"}
-            </Button>
+              Create Account
+            </CooldownButton>
 
-            {/* ✅ Subtext link below */}
             <p className="text-sm text-center text-gray-600 mt-4">
               Already have an account?{" "}
               <Link to="/login" className="text-primary underline hover:text-primary/80">

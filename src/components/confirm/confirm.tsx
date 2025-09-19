@@ -3,23 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import CooldownButton from "@/components/ui/CooldownButton";
+import CooldownLink from "@/components/ui/CooldownLink";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const Confirm = () => {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-
-  // Pull email indirectly via pending_token flow
   const pendingToken = localStorage.getItem("pending_token");
 
-  const handleConfirm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleConfirm = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     try {
       const response = await fetch(`${API_BASE_URL}/auth/confirm-signup`, {
         method: "POST",
@@ -35,15 +30,11 @@ const Confirm = () => {
       navigate("/login");
     } catch (err) {
       alert("❌ Error: " + (err as Error).message);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleResend = async () => {
     if (!pendingToken) return;
-    setResending(true);
-
     try {
       const response = await fetch(`${API_BASE_URL}/auth/resend-confirmation`, {
         method: "POST",
@@ -57,8 +48,6 @@ const Confirm = () => {
       alert("📩 A new confirmation code has been sent to your email.");
     } catch (err) {
       alert("❌ Resend failed: " + (err as Error).message);
-    } finally {
-      setResending(false);
     }
   };
 
@@ -81,22 +70,12 @@ const Confirm = () => {
               />
             </div>
 
-            {/* Primary action = solid button */}
-            <Button type="submit" className="w-full bg-primary text-white" disabled={loading}>
-              {loading ? "Verifying..." : "Confirm Account"}
-            </Button>
+            <CooldownButton type="submit" onClick={handleConfirm} className="w-full bg-primary text-white">
+              Confirm Account
+            </CooldownButton>
 
-            {/* Secondary action = text link */}
             <p className="text-sm text-center mt-2">
-              Didn’t get a code?{" "}
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={resending}
-                className="text-primary underline hover:text-primary/80 disabled:opacity-50"
-              >
-                Resend Code
-              </button>
+              Didn’t get a code? <CooldownLink onClick={handleResend}>Resend Code</CooldownLink>
             </p>
           </form>
         </CardContent>

@@ -28,22 +28,48 @@ const Login = () => {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        const message = typeof data.detail === "string" ? data.detail : "";
+      // Be resilient to non-JSON bodies
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
 
-        if (message.toLowerCase().includes("not confirmed")) {
+      if (!response.ok) {
+        // 🔑 Prefer structured code from backend
+        const code = typeof data.detail === "object" ? data.detail?.code : null;
+
+        // Fallback to string matching if backend returns a string
+        const detailStr =
+          typeof data.detail === "string" ? data.detail : "";
+
+        const looksUnconfirmed =
+          code === "USER_NOT_CONFIRMED" ||
+          /isn[’']?t confirmed|not confirmed/i.test(detailStr);
+
+        if (looksUnconfirmed) {
+          const msg =
+            code === "USER_NOT_CONFIRMED"
+              ? data.detail?.message || "Your account isn’t confirmed yet. We’ve resent the confirmation code to your email."
+              : detailStr || "Your account isn’t confirmed yet. We’ve resent the confirmation code to your email.";
+
+          // Save email so Confirm page can confirm by email
           localStorage.setItem("unconfirmed_email", formData.email);
+
+          // Redirect to confirm
           navigate("/confirm");
+
           setTimeout(() => {
-            alert("⚠️ " + message);
-          }, 100);
+            alert("⚠️ " + msg);
+          }, 200);
           return;
         }
 
-        throw new Error(message || "Login failed");
+        throw new Error(detailStr || "Login failed");
       }
 
+      // ✅ Login success
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
       alert("✅ Logged in successfully!");

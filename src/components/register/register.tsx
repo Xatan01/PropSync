@@ -3,21 +3,36 @@ import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import CooldownButton from "@/components/ui/CooldownButton";
+import { Button } from "@/components/ui/button";
 import { Mail, Lock, User } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const Register = () => {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // ✅ Password validation FIRST
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
+    if (!passwordRegex.test(formData.password)) {
+      alert(
+        "Password must have at least 8 characters, including uppercase, lowercase, number, and special symbol."
+      );
+      return; // 🚫 Stop here, don’t call backend
+    }
+
+    setLoading(true);
+
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
@@ -32,6 +47,8 @@ const Register = () => {
       navigate("/confirm");
     } catch (err) {
       alert("❌ Registration failed: " + (err as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,15 +106,19 @@ const Register = () => {
                   className="border-0 focus-visible:ring-0"
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Must be at least 8 characters and include uppercase, lowercase, number, and special symbol.
+              </p>
             </div>
 
-            <CooldownButton
+            {/* ✅ Only type=submit, no onClick */}
+            <Button
               type="submit"
-              onClick={handleSubmit}
               className="w-full bg-primary text-white hover:bg-primary/90"
+              disabled={loading}
             >
-              Create Account
-            </CooldownButton>
+              {loading ? "Registering..." : "Create Account"}
+            </Button>
 
             <p className="text-sm text-center text-gray-600 mt-4">
               Already have an account?{" "}

@@ -26,10 +26,10 @@ const Confirm = () => {
           body: JSON.stringify({ code, pending_token: pendingToken }),
         });
       } else if (unconfirmedEmail) {
-        response = await fetch(`${API_BASE_URL}/auth/confirm-signup`, {
+        response = await fetch(`${API_BASE_URL}/auth/confirm-signup-by-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, pending_token: "dummy" }), // fallback, not used
+          body: JSON.stringify({ code, email: unconfirmedEmail }),
         });
       } else {
         throw new Error("No account context found.");

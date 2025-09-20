@@ -1,18 +1,21 @@
 import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,18 +25,31 @@ const Login = () => {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Login failed");
+      if (!response.ok) {
+        const message = typeof data.detail === "string" ? data.detail : "";
 
-      console.log("✅ Login successful:", data);
+        if (message.toLowerCase().includes("not confirmed")) {
+          localStorage.setItem("unconfirmed_email", formData.email);
+          navigate("/confirm");
+          setTimeout(() => {
+            alert("⚠️ " + message);
+          }, 100);
+          return;
+        }
+
+        throw new Error(message || "Login failed");
+      }
+
       localStorage.setItem("access_token", data.access_token);
-      navigate("/home");
+      localStorage.setItem("refresh_token", data.refresh_token);
+      alert("✅ Logged in successfully!");
+      navigate("/");
     } catch (err) {
-      console.error("❌ Login error:", err);
-      alert("Login failed: " + (err as Error).message);
+      alert("❌ Login failed: " + (err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -53,10 +69,11 @@ const Login = () => {
                 <Mail className="h-4 w-4 text-muted-foreground mr-2" />
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={handleChange}
                   className="border-0 focus-visible:ring-0"
                 />
               </div>
@@ -68,33 +85,37 @@ const Login = () => {
                 <Lock className="h-4 w-4 text-muted-foreground mr-2" />
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={handleChange}
                   className="border-0 focus-visible:ring-0"
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-primary text-white" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <Button
+              type="submit"
+              className="w-full bg-primary text-white hover:bg-primary/90"
+              disabled={loading}
+            >
+              {loading ? "Logging in..." : "Login"}
             </Button>
 
-            {/* ✅ Subtext links below */}
-            <div className="mt-4 text-sm text-center space-y-2">
-              <p>
-                <Link to="/forgot-password" className="text-primary underline hover:text-primary/80">
-                  Forgot your password?
-                </Link>
-              </p>
-              <p className="text-gray-600">
-                Don’t have an account?{" "}
-                <Link to="/register" className="text-primary underline hover:text-primary/80">
-                  Register
-                </Link>
-              </p>
-            </div>
+            <p className="text-sm text-center text-gray-600 mt-4">
+              Don’t have an account?{" "}
+              <Link to="/register" className="text-primary underline hover:text-primary/80">
+                Register
+              </Link>
+            </p>
+
+            <p className="text-sm text-center text-gray-600 mt-2">
+              Forgot your password?{" "}
+              <Link to="/forgot-password" className="text-primary underline hover:text-primary/80">
+                Reset it
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

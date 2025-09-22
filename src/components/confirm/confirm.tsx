@@ -17,18 +17,21 @@ const Confirm = () => {
   const email =
     sessionStorage.getItem("pending_email") ||
     localStorage.getItem("unconfirmed_email");
-  const password = sessionStorage.getItem("pending_password");
+  const password = sessionStorage.getItem("pending_password"); // only exists if user came from register/login
 
   const handleConfirm = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setLoading(true);
 
     try {
-      // ✅ Step 1: pick endpoint + body depending on whether we have a pending_token
+      // ✅ Step 1: build request depending on whether we have a pending_token
       let endpoint = "/auth/confirm-signup";
-      let body: any = { code, pending_token: pendingToken };
+      let body: Record<string, string> = { code };
 
-      if (!pendingToken) {
+      if (pendingToken) {
+        body.pending_token = pendingToken;
+      } else {
+        if (!email) throw new Error("No email found. Please try login/register again.");
         endpoint = "/auth/confirm-signup-by-email";
         body = { email, code };
       }
@@ -42,7 +45,7 @@ const Confirm = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Confirmation failed");
 
-      // ✅ Step 2: auto-login if we have creds (from register OR login flow)
+      // ✅ Step 2: auto-login if we have stored credentials
       if (email && password) {
         const loginResp = await fetch(`${API_BASE_URL}/auth/login`, {
           method: "POST",

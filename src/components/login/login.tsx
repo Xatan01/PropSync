@@ -33,10 +33,15 @@ const Login = () => {
         const message = typeof data.detail === "string" ? data.detail : "";
 
         // ✅ Handle unconfirmed user
-        if (message.toLowerCase().includes("not confirmed")) {
+        if (
+          message.toLowerCase().includes("not confirmed") ||
+          message.toLowerCase().includes("isn’t confirmed") || // curly apostrophe
+          message.toLowerCase().includes("isn't confirmed")    // straight apostrophe
+        ) {
+          // Store email for confirm step
           localStorage.setItem("unconfirmed_email", formData.email);
 
-          // 🔐 Store password in sessionStorage temporarily for auto-login after confirm
+          // 🔐 Store creds temporarily for auto-login after confirm
           sessionStorage.setItem("pending_email", formData.email);
           sessionStorage.setItem("pending_password", formData.password);
 
@@ -112,14 +117,20 @@ const Login = () => {
 
             <p className="text-sm text-center text-gray-600 mt-4">
               Don’t have an account?{" "}
-              <Link to="/register" className="text-primary underline hover:text-primary/80">
+              <Link
+                to="/register"
+                className="text-primary underline hover:text-primary/80"
+              >
                 Register
               </Link>
             </p>
 
             <p className="text-sm text-center text-gray-600 mt-2">
               Forgot your password?{" "}
-              <Link to="/forgot-password" className="text-primary underline hover:text-primary/80">
+              <Link
+                to="/forgot-password"
+                className="text-primary underline hover:text-primary/80"
+              >
                 Reset it
               </Link>
             </p>

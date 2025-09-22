@@ -12,26 +12,37 @@ const Confirm = () => {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // what we stored earlier
   const pendingToken = localStorage.getItem("pending_token");
-  const email = sessionStorage.getItem("pending_email") || localStorage.getItem("unconfirmed_email");
-  const password = sessionStorage.getItem("pending_password"); // only if from register
+  const email =
+    sessionStorage.getItem("pending_email") ||
+    localStorage.getItem("unconfirmed_email");
+  const password = sessionStorage.getItem("pending_password");
 
   const handleConfirm = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setLoading(true);
 
     try {
-      // Step 1: confirm signup
-      const response = await fetch(`${API_BASE_URL}/auth/confirm-signup`, {
+      // ✅ Step 1: pick endpoint + body depending on whether we have a pending_token
+      let endpoint = "/auth/confirm-signup";
+      let body: any = { code, pending_token: pendingToken };
+
+      if (!pendingToken) {
+        endpoint = "/auth/confirm-signup-by-email";
+        body = { email, code };
+      }
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, pending_token: pendingToken || "dummy" }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Confirmation failed");
 
-      // Step 2: auto login if we have password (came from Register)
+      // ✅ Step 2: auto-login if we have creds (from register OR login flow)
       if (email && password) {
         const loginResp = await fetch(`${API_BASE_URL}/auth/login`, {
           method: "POST",
@@ -46,14 +57,14 @@ const Confirm = () => {
         localStorage.setItem("refresh_token", loginData.refresh_token);
       }
 
-      // Cleanup
+      // ✅ Step 3: cleanup storage
       localStorage.removeItem("pending_token");
       localStorage.removeItem("unconfirmed_email");
       sessionStorage.removeItem("pending_email");
       sessionStorage.removeItem("pending_password");
 
       alert("✅ Account confirmed and logged in!");
-      navigate("/home"); // go straight home
+      navigate("/home");
     } catch (err) {
       alert("❌ Error: " + (err as Error).message);
     } finally {
@@ -65,7 +76,9 @@ const Confirm = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Confirm Your Account</CardTitle>
+          <CardTitle className="text-2xl text-center">
+            Confirm Your Account
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleConfirm} className="space-y-4">
@@ -79,7 +92,11 @@ const Confirm = () => {
                 onChange={(e) => setCode(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full bg-primary text-white" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full bg-primary text-white"
+              disabled={loading}
+            >
               {loading ? "Confirming..." : "Confirm Account"}
             </Button>
           </form>

@@ -3,75 +3,61 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import CooldownButton from "@/components/ui/CooldownButton";
-import CooldownLink from "@/components/ui/CooldownLink";
+import { Button } from "@/components/ui/button";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const Confirm = () => {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const pendingToken = localStorage.getItem("pending_token");
-  const unconfirmedEmail = localStorage.getItem("unconfirmed_email");
+  const email = sessionStorage.getItem("pending_email") || localStorage.getItem("unconfirmed_email");
+  const password = sessionStorage.getItem("pending_password"); // only if from register
 
   const handleConfirm = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    setLoading(true);
+
     try {
-      let response;
-      if (pendingToken) {
-        response = await fetch(`${API_BASE_URL}/auth/confirm-signup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, pending_token: pendingToken }),
-        });
-      } else if (unconfirmedEmail) {
-        response = await fetch(`${API_BASE_URL}/auth/confirm-signup-by-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, email: unconfirmedEmail }),
-        });
-      } else {
-        throw new Error("No account context found.");
-      }
+      // Step 1: confirm signup
+      const response = await fetch(`${API_BASE_URL}/auth/confirm-signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, pending_token: pendingToken || "dummy" }),
+      });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Confirmation failed");
 
-      alert("✅ Account confirmed! You can now log in.");
-      localStorage.removeItem("pending_token");
-      localStorage.removeItem("unconfirmed_email");
-      navigate("/login");
-    } catch (err) {
-      alert("❌ Error: " + (err as Error).message);
-    }
-  };
+      // Step 2: auto login if we have password (came from Register)
+      if (email && password) {
+        const loginResp = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-  const handleResend = async () => {
-    try {
-      let response;
-      if (pendingToken) {
-        response = await fetch(`${API_BASE_URL}/auth/resend-confirmation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pending_token: pendingToken }),
-        });
-      } else if (unconfirmedEmail) {
-        response = await fetch(`${API_BASE_URL}/auth/resend-confirmation-by-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: unconfirmedEmail }),
-        });
-      } else {
-        throw new Error("No account context found.");
+        const loginData = await loginResp.json();
+        if (!loginResp.ok) throw new Error(loginData.detail || "Auto-login failed");
+
+        localStorage.setItem("access_token", loginData.access_token);
+        localStorage.setItem("refresh_token", loginData.refresh_token);
       }
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Resend failed");
+      // Cleanup
+      localStorage.removeItem("pending_token");
+      localStorage.removeItem("unconfirmed_email");
+      sessionStorage.removeItem("pending_email");
+      sessionStorage.removeItem("pending_password");
 
-      alert("📩 A new confirmation code has been sent to your email.");
+      alert("✅ Account confirmed and logged in!");
+      navigate("/home"); // go straight home
     } catch (err) {
-      alert("❌ Resend failed: " + (err as Error).message);
+      alert("❌ Error: " + (err as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,31 +68,20 @@ const Confirm = () => {
           <CardTitle className="text-2xl text-center">Confirm Your Account</CardTitle>
         </CardHeader>
         <CardContent>
-          {unconfirmedEmail && (
-            <p className="text-sm text-gray-600 text-center mb-2">
-              We’ve sent a code to {unconfirmedEmail}.
-            </p>
-          )}
           <form onSubmit={handleConfirm} className="space-y-4">
             <div>
               <Label htmlFor="code">Confirmation Code</Label>
               <Input
                 id="code"
                 type="text"
-                placeholder="Enter the 6-digit code"
+                placeholder="Enter the code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
               />
             </div>
-
-            <CooldownButton type="submit" onClick={handleConfirm} className="w-full bg-primary text-white">
-              Confirm Account
-            </CooldownButton>
-
-            <p className="text-sm text-center mt-2">
-              Didn’t get a code?{" "}
-              <CooldownLink onClick={handleResend}>Resend Code</CooldownLink>
-            </p>
+            <Button type="submit" className="w-full bg-primary text-white" disabled={loading}>
+              {loading ? "Confirming..." : "Confirm Account"}
+            </Button>
           </form>
         </CardContent>
       </Card>

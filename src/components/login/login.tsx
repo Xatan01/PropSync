@@ -28,52 +28,33 @@ const Login = () => {
         body: JSON.stringify(formData),
       });
 
-      // Be resilient to non-JSON bodies
-      let data: any = {};
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
-      }
-
+      const data = await response.json();
       if (!response.ok) {
-        // 🔑 Prefer structured code from backend
-        const code = typeof data.detail === "object" ? data.detail?.code : null;
+        const message = typeof data.detail === "string" ? data.detail : "";
 
-        // Fallback to string matching if backend returns a string
-        const detailStr =
-          typeof data.detail === "string" ? data.detail : "";
-
-        const looksUnconfirmed =
-          code === "USER_NOT_CONFIRMED" ||
-          /isn[’']?t confirmed|not confirmed/i.test(detailStr);
-
-        if (looksUnconfirmed) {
-          const msg =
-            code === "USER_NOT_CONFIRMED"
-              ? data.detail?.message || "Your account isn’t confirmed yet. We’ve resent the confirmation code to your email."
-              : detailStr || "Your account isn’t confirmed yet. We’ve resent the confirmation code to your email.";
-
-          // Save email so Confirm page can confirm by email
+        // ✅ Handle unconfirmed user
+        if (message.toLowerCase().includes("not confirmed")) {
           localStorage.setItem("unconfirmed_email", formData.email);
 
-          // Redirect to confirm
-          navigate("/confirm");
+          // 🔐 Store password in sessionStorage temporarily for auto-login after confirm
+          sessionStorage.setItem("pending_email", formData.email);
+          sessionStorage.setItem("pending_password", formData.password);
 
+          navigate("/confirm");
           setTimeout(() => {
-            alert("⚠️ " + msg);
-          }, 200);
+            alert("⚠️ " + message);
+          }, 100);
           return;
         }
 
-        throw new Error(detailStr || "Login failed");
+        throw new Error(message || "Login failed");
       }
 
-      // ✅ Login success
+      // ✅ Success: store tokens
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
       alert("✅ Logged in successfully!");
-      navigate("/");
+      navigate("/home");
     } catch (err) {
       alert("❌ Login failed: " + (err as Error).message);
     } finally {

@@ -20,15 +20,13 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ✅ Password validation FIRST
+    // ✅ Basic password validation before hitting backend
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
     if (!passwordRegex.test(formData.password)) {
-      alert(
-        "Password must have at least 8 characters, including uppercase, lowercase, number, and special symbol."
-      );
-      return; // 🚫 Stop here, don’t call backend
+      alert("❌ Password must have uppercase, lowercase, number, special char, and be 8+ chars long.");
+      return;
     }
 
     setLoading(true);
@@ -42,6 +40,10 @@ const Register = () => {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Registration failed");
+
+      // ✅ Store creds for confirm flow
+      sessionStorage.setItem("pending_email", formData.email);
+      sessionStorage.setItem("pending_password", formData.password);
 
       localStorage.setItem("pending_token", data.pending_token);
       navigate("/confirm");
@@ -63,7 +65,7 @@ const Register = () => {
             <div>
               <Label htmlFor="name">Name</Label>
               <div className="flex items-center border rounded-md px-2">
-                <User className="h-4 w-4 text-muted-foreground mr-2" />
+                <User className="h-4 w-4 mr-2 text-muted-foreground" />
                 <Input
                   id="name"
                   name="name"
@@ -75,11 +77,10 @@ const Register = () => {
                 />
               </div>
             </div>
-
             <div>
               <Label htmlFor="email">Email</Label>
               <div className="flex items-center border rounded-md px-2">
-                <Mail className="h-4 w-4 text-muted-foreground mr-2" />
+                <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
                 <Input
                   id="email"
                   name="email"
@@ -91,11 +92,10 @@ const Register = () => {
                 />
               </div>
             </div>
-
             <div>
               <Label htmlFor="password">Password</Label>
               <div className="flex items-center border rounded-md px-2">
-                <Lock className="h-4 w-4 text-muted-foreground mr-2" />
+                <Lock className="h-4 w-4 mr-2 text-muted-foreground" />
                 <Input
                   id="password"
                   name="password"
@@ -106,17 +106,9 @@ const Register = () => {
                   className="border-0 focus-visible:ring-0"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Must be at least 8 characters and include uppercase, lowercase, number, and special symbol.
-              </p>
             </div>
 
-            {/* ✅ Only type=submit, no onClick */}
-            <Button
-              type="submit"
-              className="w-full bg-primary text-white hover:bg-primary/90"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full bg-primary text-white" disabled={loading}>
               {loading ? "Registering..." : "Create Account"}
             </Button>
 

@@ -25,7 +25,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* App routes */}
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<Login />} />
       <Route path="/client-list" element={<ClientList />} />
       <Route path="/client-portal" element={<ClientPortal />} />
       <Route path="/dashboard" element={<AgentDashboard />} />

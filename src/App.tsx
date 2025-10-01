@@ -19,7 +19,8 @@ function App() {
     <Routes>
       {/* Public / Auth routes */}
       <Route path="/register" element={<Register />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/agent-login" element={<Login />} />
+      <Route path="/client-login" element={<Login />} />
       <Route path="/confirm" element={<Confirm />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

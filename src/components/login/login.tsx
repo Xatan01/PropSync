@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,11 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ✅ Default to client login unless URL explicitly contains "agent"
+  const isClient = !location.pathname.includes("agent");
+  const role = isClient ? "client" : "agent";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -22,7 +27,11 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const endpoint = isClient
+        ? `${API_BASE_URL}/client-auth/login`
+        : `${API_BASE_URL}/auth/login`;
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -32,34 +41,27 @@ const Login = () => {
       if (!response.ok) {
         const message = typeof data.detail === "string" ? data.detail : "";
 
-        // ✅ Handle unconfirmed user
         if (
           message.toLowerCase().includes("not confirmed") ||
-          message.toLowerCase().includes("isn’t confirmed") || // curly apostrophe
-          message.toLowerCase().includes("isn't confirmed")    // straight apostrophe
+          message.toLowerCase().includes("isn’t confirmed") ||
+          message.toLowerCase().includes("isn't confirmed")
         ) {
-          // Store email for confirm step
           localStorage.setItem("unconfirmed_email", formData.email);
-
-          // 🔐 Store creds temporarily for auto-login after confirm
           sessionStorage.setItem("pending_email", formData.email);
           sessionStorage.setItem("pending_password", formData.password);
-
           navigate("/confirm");
-          setTimeout(() => {
-            alert("⚠️ " + message);
-          }, 100);
+          setTimeout(() => alert("⚠️ " + message), 100);
           return;
         }
 
         throw new Error(message || "Login failed");
       }
 
-      // ✅ Success: store tokens
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refresh_token);
+      localStorage.setItem(`${role}_access_token`, data.access_token);
+      localStorage.setItem(`${role}_refresh_token`, data.refresh_token);
+
       alert("✅ Logged in successfully!");
-      navigate("/home");
+      navigate(isClient ? "/client-dashboard" : "/home");
     } catch (err) {
       alert("❌ Login failed: " + (err as Error).message);
     } finally {
@@ -71,7 +73,9 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Login</CardTitle>
+          <CardTitle className="text-2xl text-center">
+            {isClient ? "Client Login" : "Agent Login"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -112,28 +116,61 @@ const Login = () => {
               className="w-full bg-primary text-white hover:bg-primary/90"
               disabled={loading}
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading
+                ? isClient
+                  ? "Logging in client..."
+                  : "Logging in agent..."
+                : "Login"}
             </Button>
 
+            {/* Switcher link */}
             <p className="text-sm text-center text-gray-600 mt-4">
-              Don’t have an account?{" "}
-              <Link
-                to="/register"
-                className="text-primary underline hover:text-primary/80"
-              >
-                Register
-              </Link>
+              {isClient ? (
+                <>
+                  Are you an agent?{" "}
+                  <Link
+                    to="/agent-login"
+                    className="text-primary underline hover:text-primary/80"
+                  >
+                    Switch to Agent Login
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Are you a client?{" "}
+                  <Link
+                    to="/client-login"
+                    className="text-primary underline hover:text-primary/80"
+                  >
+                    Switch to Client Login
+                  </Link>
+                </>
+              )}
             </p>
 
+            {/* Forgot password */}
             <p className="text-sm text-center text-gray-600 mt-2">
               Forgot your password?{" "}
               <Link
-                to="/forgot-password"
+                to={isClient ? "/client-forgot-password" : "/forgot-password"}
                 className="text-primary underline hover:text-primary/80"
               >
                 Reset it
               </Link>
             </p>
+
+            {/* Agent-only register */}
+            {!isClient && (
+              <p className="text-sm text-center text-gray-600 mt-2">
+                Don’t have an agent account?{" "}
+                <Link
+                  to="/register"
+                  className="text-primary underline hover:text-primary/80"
+                >
+                  Register
+                </Link>
+              </p>
+            )}
           </form>
         </CardContent>
       </Card>

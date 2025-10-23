@@ -1,34 +1,47 @@
-// components/ResetPassword/ResetPassword.tsx
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@supabase/supabase-js";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
 
 export default function ResetPassword() {
-  const [params] = useSearchParams();
   const navigate = useNavigate();
-  const token = params.get("access_token"); // Supabase puts this in the URL
   const [newPassword, setNewPassword] = useState("");
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) alert("Invalid or missing reset token.");
-  }, [token]);
+    // ✅ Extract token from hash (#access_token=)
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
+    if (accessToken) {
+      setToken(accessToken);
+      // ✅ Set the current session so Supabase knows the user context
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: params.get("refresh_token") || "",
+      });
+    } else {
+      alert("⚠️ Invalid or missing reset token.");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, new_password: newPassword }),
+      if (!token) throw new Error("Missing reset token");
+      const { data, error } = await supabase.auth.updateUser({
+        password: newPassword,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Reset failed");
-      alert("✅ Password updated. You can now log in.");
+      if (error) throw error;
+      alert("✅ Password updated successfully. You can now log in.");
       navigate("/agent-login");
     } catch (err) {
       alert("❌ " + (err as Error).message);

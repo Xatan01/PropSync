@@ -61,7 +61,7 @@ const Login = () => {
       localStorage.setItem(`${role}_refresh_token`, data.refresh_token);
 
       alert("✅ Logged in successfully!");
-      navigate(isClient ? "/client-dashboard" : "/home");
+      navigate(isClient ? "/client-dashboard" : "/dashboard");
     } catch (err) {
       alert("❌ Login failed: " + (err as Error).message);
     } finally {

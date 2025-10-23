@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSupabaseSession } from "@/utils/useSupabaseSession";
+
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -46,6 +48,7 @@ interface Transaction {
 }
 
 const Home: React.FC = () => {
+  useSupabaseSession();
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [sortBy, setSortBy] = useState("dueDate");

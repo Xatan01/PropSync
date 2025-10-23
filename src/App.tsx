@@ -11,7 +11,7 @@ import Home from "./components/home";
 import Register from "./components/register/register";
 import Login from "./components/login/login";
 import Confirm from "./components/confirm/confirm";
-import ForgotPassword from "./components/forgetpassword/ForgetPassword";
+import ForgotPassword from "./components/ForgetPassword/ForgetPassword";
 import ResetPassword from "./components/ResetPassword/ResetPassword";
 
 function App() {

@@ -1,95 +1,42 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
-} from "@/components/ui/card";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { api } from "@/utils/api";
 import { Button } from "@/components/ui/button";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Home as HomeIcon, Bell, Plus, Calendar, ChevronRight } from "lucide-react";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSupabaseSession } from "@/utils/useSupabaseSession";
-
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
 
 interface Client {
   id: string | number;
   name: string;
   email: string;
-  phone?: string;
   property?: string;
-  transactionType?: string;
-  progress?: number;
-  status?: "active" | "pending" | "completed";
-  value?: number;
-  nextTask?: string;
-  dueDate?: string;
+  status?: string;
 }
 
-interface Transaction {
-  id: string;
-  title: string;
-  type: string;
-  progress: number;
-  client: string;
-  dueDate: string;
-}
-
-const Home: React.FC = () => {
-  useSupabaseSession();
-  const navigate = useNavigate();
+const Home = () => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [sortBy, setSortBy] = useState("dueDate");
   const [open, setOpen] = useState(false);
   const [newClient, setNewClient] = useState<Partial<Client>>({
-    name: "", email: "", phone: "", property: "",
-    transactionType: "", status: "pending", progress: 0,
+    name: "",
+    email: "",
+    property: "",
+    status: "pending",
   });
 
-  // ✅ Capture Supabase magic link tokens
+  // ✅ Fetch clients from backend (RLS-enforced)
   useEffect(() => {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-
-    if (accessToken && refreshToken) {
-      localStorage.setItem("access_token", accessToken);
-      localStorage.setItem("refresh_token", refreshToken);
-      window.history.replaceState({}, document.title, window.location.pathname);
-      console.log("✅ Magic link login successful");
-    }
-  }, []);
-
-  // ✅ Fetch clients using token
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) return;
-    axios.get(`${API_BASE_URL}/clients`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => setClients(res.data))
-    .catch(() => setClients([]));
+    api
+      .get("/clients")
+      .then((res) => setClients(res.data))
+      .catch(() => setClients([]));
   }, []);
 
   const handleAddClient = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await axios.post(`${API_BASE_URL}/clients`, newClient, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      const res = await api.post("/clients", newClient);
       setClients((prev) => [...prev, res.data]);
       setOpen(false);
     } catch (err) {
@@ -97,10 +44,65 @@ const Home: React.FC = () => {
     }
   };
 
-  // ... your existing JSX for UI (unchanged)
   return (
-    <div className="bg-background min-h-screen">
-      {/* your existing content unchanged */}
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">My Clients</h1>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Client
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Client</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Label>Name</Label>
+              <Input
+                value={newClient.name}
+                onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+              />
+              <Label>Email</Label>
+              <Input
+                value={newClient.email}
+                onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+              />
+              <Label>Property</Label>
+              <Input
+                value={newClient.property}
+                onChange={(e) => setNewClient({ ...newClient, property: e.target.value })}
+              />
+              <Button onClick={handleAddClient} className="w-full">
+                Save
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Clients List</CardTitle>
+          <CardDescription>Your current clients</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {clients.length === 0 ? (
+            <p>No clients yet.</p>
+          ) : (
+            clients.map((client) => (
+              <div key={client.id} className="flex justify-between py-2 border-b">
+                <div>
+                  <p className="font-medium">{client.name}</p>
+                  <p className="text-sm text-gray-600">{client.email}</p>
+                </div>
+                <span className="text-sm capitalize">{client.status}</span>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

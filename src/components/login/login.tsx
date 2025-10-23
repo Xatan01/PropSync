@@ -26,9 +26,8 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const endpoint = isClient
-        ? `${API_BASE_URL}/client-auth/login`
-        : `${API_BASE_URL}/auth/login`;
+      // ✅ Single Supabase login endpoint
+      const endpoint = `${API_BASE_URL}/auth/login`;
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -39,26 +38,22 @@ const Login = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        const message = typeof data.detail === "string" ? data.detail : "";
+        const message = data.detail || data.error?.message || "Login failed";
 
-        // ✅ Handle unconfirmed users cleanly (no redirect)
-        if (
-          message.toLowerCase().includes("not confirmed") ||
-          message.toLowerCase().includes("isn’t confirmed") ||
-          message.toLowerCase().includes("isn't confirmed")
-        ) {
+        // ✅ Handle unconfirmed users (Supabase)
+        if (message.toLowerCase().includes("email not confirmed")) {
           alert(
-            "⚠️ Your account isn’t confirmed yet. Please check your email inbox for the confirmation link."
+            "⚠️ Please confirm your email before logging in. Check your inbox for the verification link."
           );
           return;
         }
 
-        throw new Error(message || "Login failed");
+        throw new Error(message);
       }
 
-      // ✅ Save tokens and redirect
-      localStorage.setItem(`${role}_access_token`, data.access_token);
-      localStorage.setItem(`${role}_refresh_token`, data.refresh_token);
+      // ✅ Store Supabase session tokens
+      localStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("refresh_token", data.refresh_token);
 
       alert("✅ Logged in successfully!");
       navigate(isClient ? "/client-dashboard" : "/dashboard");

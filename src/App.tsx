@@ -11,7 +11,7 @@ import Home from "./components/home";
 import Register from "./components/register/register";
 import Login from "./components/login/login";
 import Confirm from "./components/confirm/confirm";
-import ForgotPassword from "./components/ForgetPassword/ForgetPassword";
+import ForgotPassword from "./components/forgetpassword/ForgetPassword";
 import ResetPassword from "./components/ResetPassword/ResetPassword";
 
 function App() {
@@ -21,7 +21,6 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/agent-login" element={<Login />} />
       <Route path="/client-login" element={<Login />} />
-      <Route path="/confirm" element={<Confirm />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 

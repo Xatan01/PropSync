@@ -1,33 +1,32 @@
+// components/ForgetPassword/ForgotPassword.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import CooldownButton from "@/components/ui/CooldownButton";
+import { Button } from "@/components/ui/button";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-const ForgotPassword = () => {
+export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Request failed");
-
-      localStorage.setItem("reset_email", email);
-      alert("📩 Reset code sent to your email.");
-      navigate("/reset-password");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Request failed");
+      alert("📩 Check your email for a password-reset link.");
     } catch (err) {
-      alert("❌ Error: " + (err as Error).message);
+      alert("❌ " + (err as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -39,24 +38,24 @@ const ForgotPassword = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <CooldownButton type="submit" onClick={handleSubmit} className="w-full">
-              Send Reset Code
-            </CooldownButton>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-white"
+            >
+              {loading ? "Sending..." : "Send Reset Link"}
+            </Button>
           </form>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default ForgotPassword;
+}

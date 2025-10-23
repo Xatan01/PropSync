@@ -14,7 +14,6 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ Default to client login unless URL explicitly contains "agent"
   const isClient = !location.pathname.includes("agent");
   const role = isClient ? "client" : "agent";
 
@@ -38,25 +37,26 @@ const Login = () => {
       });
 
       const data = await response.json();
+
       if (!response.ok) {
         const message = typeof data.detail === "string" ? data.detail : "";
 
+        // ✅ Handle unconfirmed users cleanly (no redirect)
         if (
           message.toLowerCase().includes("not confirmed") ||
           message.toLowerCase().includes("isn’t confirmed") ||
           message.toLowerCase().includes("isn't confirmed")
         ) {
-          localStorage.setItem("unconfirmed_email", formData.email);
-          sessionStorage.setItem("pending_email", formData.email);
-          sessionStorage.setItem("pending_password", formData.password);
-          navigate("/confirm");
-          setTimeout(() => alert("⚠️ " + message), 100);
+          alert(
+            "⚠️ Your account isn’t confirmed yet. Please check your email inbox for the confirmation link."
+          );
           return;
         }
 
         throw new Error(message || "Login failed");
       }
 
+      // ✅ Save tokens and redirect
       localStorage.setItem(`${role}_access_token`, data.access_token);
       localStorage.setItem(`${role}_refresh_token`, data.refresh_token);
 

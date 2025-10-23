@@ -19,18 +19,14 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // ✅ Basic password validation before hitting backend
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
-
     if (!passwordRegex.test(formData.password)) {
-      alert("❌ Password must have uppercase, lowercase, number, special char, and be 8+ chars long.");
+      alert("❌ Password must include upper, lower, number, special character and be 8+ chars.");
       return;
     }
 
     setLoading(true);
-
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
@@ -41,12 +37,8 @@ const Register = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Registration failed");
 
-      // ✅ Store creds for confirm flow
-      sessionStorage.setItem("pending_email", formData.email);
-      sessionStorage.setItem("pending_password", formData.password);
-
-      localStorage.setItem("pending_token", data.pending_token);
-      navigate("/confirm");
+      alert("✅ Registration successful! Check your email for a confirmation link.");
+      navigate("/agent-login");
     } catch (err) {
       alert("❌ Registration failed: " + (err as Error).message);
     } finally {
@@ -77,6 +69,7 @@ const Register = () => {
                 />
               </div>
             </div>
+
             <div>
               <Label htmlFor="email">Email</Label>
               <div className="flex items-center border rounded-md px-2">
@@ -92,6 +85,7 @@ const Register = () => {
                 />
               </div>
             </div>
+
             <div>
               <Label htmlFor="password">Password</Label>
               <div className="flex items-center border rounded-md px-2">
@@ -114,7 +108,7 @@ const Register = () => {
 
             <p className="text-sm text-center text-gray-600 mt-4">
               Already have an account?{" "}
-              <Link to="/login" className="text-primary underline hover:text-primary/80">
+              <Link to="/agent-login" className="text-primary underline hover:text-primary/80">
                 Login
               </Link>
             </p>

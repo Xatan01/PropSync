@@ -1,59 +1,37 @@
+// components/ResetPassword/ResetPassword.tsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import CooldownButton from "@/components/ui/CooldownButton";
-import CooldownLink from "@/components/ui/CooldownLink";
+import { Button } from "@/components/ui/button";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-const ResetPassword = () => {
+export default function ResetPassword() {
+  const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [code, setCode] = useState("");
+  const token = params.get("access_token"); // Supabase puts this in the URL
   const [newPassword, setNewPassword] = useState("");
-  const [email, setEmail] = useState("");
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem("reset_email");
-    if (!savedEmail) {
-      alert("⚠️ No email found. Please start from Forgot Password.");
-      navigate("/forgot-password");
-    } else {
-      setEmail(savedEmail);
-    }
-  }, [navigate]);
+    if (!token) alert("Invalid or missing reset token.");
+  }, [token]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, new_password: newPassword }),
+        body: JSON.stringify({ token, new_password: newPassword }),
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Reset failed");
-
-      alert("✅ Password has been reset. You can now log in.");
-      localStorage.removeItem("reset_email");
-      navigate("/login");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Reset failed");
+      alert("✅ Password updated. You can now log in.");
+      navigate("/agent-login");
     } catch (err) {
-      alert("❌ Error: " + (err as Error).message);
-    }
-  };
-
-  const handleResend = async () => {
-    try {
-      await fetch(`${API_BASE_URL}/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      alert("📩 Reset code resent to your email.");
-    } catch {
-      alert("❌ Could not resend code. Try again later.");
+      alert("❌ " + (err as Error).message);
     }
   };
 
@@ -65,38 +43,20 @@ const ResetPassword = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="code">Reset Code</Label>
-              <Input
-                id="code"
-                type="text"
-                placeholder="Enter the reset code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                placeholder="••••••••"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            <CooldownButton type="submit" onClick={handleSubmit} className="w-full">
-              Reset Password
-            </CooldownButton>
+            <Label htmlFor="newPassword">New Password</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+            <Button type="submit" className="w-full bg-primary text-white">
+              Update Password
+            </Button>
           </form>
-
-          <p className="text-sm text-center mt-2">
-            Didn’t get the code? <CooldownLink onClick={handleResend}>Resend</CooldownLink>
-          </p>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default ResetPassword;
+}

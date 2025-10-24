@@ -22,7 +22,7 @@ export default function ForgotPassword() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Request failed");
-      alert("📩 Check your email for a password-reset link.");
+      alert("📩 If this email is registered, you'll receive a password reset link shortly.");
     } catch (err) {
       alert("❌ " + (err as Error).message);
     } finally {

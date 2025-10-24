@@ -32,7 +32,6 @@ function App() {
       <Route path="/notifications" element={<NotificationSystem />} />
       <Route path="/subscription" element={<SubscriptionManagement />} />
       <Route path="/timeline" element={<TimelineBuilder />} />
-      <Route path="/home" element={<Home />} />
     </Routes>
   );
 }

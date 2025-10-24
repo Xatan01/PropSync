@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,15 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Determine if current portal is for client or agent
   const isClient = !location.pathname.includes("agent");
   const role = isClient ? "client" : "agent";
+
+  // Clear any old session when page loads
+  useEffect(() => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,13 +33,19 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // ✅ Single Supabase login endpoint
+      // ✅ Always clear stale sessions before new login
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+
       const endpoint = `${API_BASE_URL}/auth/login`;
 
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          role, // 👈 backend knows which portal you’re logging in from
+        }),
       });
 
       const data = await response.json();
@@ -40,7 +53,6 @@ const Login = () => {
       if (!response.ok) {
         const message = data.detail || data.error?.message || "Login failed";
 
-        // ✅ Handle unconfirmed users (Supabase)
         if (message.toLowerCase().includes("email not confirmed")) {
           alert(
             "⚠️ Please confirm your email before logging in. Check your inbox for the verification link."
@@ -51,7 +63,15 @@ const Login = () => {
         throw new Error(message);
       }
 
-      // ✅ Store Supabase session tokens
+      // ✅ Double check role match (defense-in-depth)
+      if (data.role && data.role !== role) {
+        alert(
+          `❌ This account is a ${data.role}. Please log in via the ${data.role} portal.`
+        );
+        return;
+      }
+
+      // ✅ Store session tokens in localStorage (so user stays logged in)
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
 

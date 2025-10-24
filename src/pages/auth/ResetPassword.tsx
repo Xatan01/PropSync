@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@supabase/supabase-js";
+import { PASSWORD_REGEX } from "@/utils/password"; // ✅ imported from utils
 
+// ✅ Initialize Supabase client
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
   import.meta.env.VITE_SUPABASE_ANON_KEY!
@@ -14,16 +16,17 @@ const supabase = createClient(
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [token, setToken] = useState<string | null>(null);
 
+  // ✅ Extract Supabase access token from URL hash
   useEffect(() => {
-    // ✅ Extract token from hash (#access_token=)
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
     const accessToken = params.get("access_token");
+
     if (accessToken) {
       setToken(accessToken);
-      // ✅ Set the current session so Supabase knows the user context
       supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: params.get("refresh_token") || "",
@@ -37,10 +40,24 @@ export default function ResetPassword() {
     e.preventDefault();
     try {
       if (!token) throw new Error("Missing reset token");
-      const { data, error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
+
+      // ✅ Validate password strength
+      if (!PASSWORD_REGEX.test(newPassword)) {
+        alert(
+          "❌ Password must include upper, lower, number, special character and be 8+ characters long."
+        );
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert("❌ Passwords do not match.");
+        return;
+      }
+
+      // ✅ Update Supabase user password
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+
       alert("✅ Password updated successfully. You can now log in.");
       navigate("/agent-login");
     } catch (err) {
@@ -56,14 +73,30 @@ export default function ResetPassword() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Label htmlFor="newPassword">New Password</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-            />
+            <div>
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
             <Button type="submit" className="w-full bg-primary text-white">
               Update Password
             </Button>

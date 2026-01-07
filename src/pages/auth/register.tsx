@@ -20,9 +20,7 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const passwordRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
-    if (!passwordRegex.test(formData.password)) {
+    if (!PASSWORD_REGEX.test(formData.password)) {
       alert("❌ Password must include upper, lower, number, special character and be 8+ chars.");
       return;
     }

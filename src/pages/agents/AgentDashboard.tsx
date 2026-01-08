@@ -1,33 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { api } from "@/utils/api";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
-  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Bell, Calendar, Clock, DollarSign, Home, Users,
+  Calendar, Clock, DollarSign, Home, Users, LogOut, CheckCircle2, ChevronRight, LayoutTemplate, Plus, BookOpen
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AddClientModal from "@/components/clients/AddClientModal";
+import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
 
 interface Client {
   id: string;
   name: string;
-  email?: string;
   property?: string;
   status?: string;
   transactionType?: string;
-  progress?: number;
   value?: number;
-  nextTask?: string;
-  dueDate?: string;
   invite_status?: string;
+}
+
+interface Template {
+  id: string;
+  template_name: string;
+  category?: string;
 }
 
 interface Activity {
@@ -38,160 +40,264 @@ interface Activity {
 }
 
 const AgentDashboard = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [sortBy, setSortBy] = useState<string>("dueDate");
+  const [sortBy, setSortBy] = useState<string>("value");
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchClients = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/clients");
-      setClients(res.data);
-    } catch {
-      setClients([]);
+      // Parallel fetch for industry-standard performance
+      const [clientRes, tempRes, actRes] = await Promise.all([
+        api.get("/clients"),
+        api.get("/timeline/templates"),
+        api.get("/clients/activity")
+      ]);
+      setClients(clientRes.data);
+      setTemplates(tempRes.data);
+      setActivities(actRes.data);
+    } catch (err) {
+      toast.error("Failed to sync dashboard data");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchActivity = async () => {
-    const res = await api.get("/clients/activity");
-    setActivities(res.data);
-  };
-
   useEffect(() => {
-    fetchClients();
-    fetchActivity();
+    fetchData();
   }, []);
 
-  const inviteClient = async (id: string) => {
+  const inviteClient = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       await api.post(`/clients/invite/${id}`);
-      alert("✅ Invite sent!");
-      fetchClients();
-      fetchActivity();
+      toast.success("Invite sent successfully!");
+      fetchData();
     } catch {
-      alert("❌ Failed to send invite.");
+      toast.error("Failed to send invite.");
     }
   };
 
   const sortedClients = [...clients].sort((a, b) => {
-    if (sortBy === "dueDate" && a.dueDate && b.dueDate)
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    if (sortBy === "value" && a.value && b.value)
-      return b.value - a.value;
+    if (sortBy === "value" && a.value && b.value) return (b.value || 0) - (a.value || 0);
     return 0;
   });
 
+  // KPI Calculations
   const activeCount = clients.filter(c => c.status === "active").length;
-  const pendingCount = clients.filter(c => c.status === "pending").length;
-  const completedCount = clients.filter(c => c.status === "completed").length;
   const totalValue = clients.reduce((sum, c) => sum + (c.value || 0), 0);
 
   return (
     <div className="bg-background min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
+        
+        {/* --- Header Section --- */}
+        <div className="flex justify-between items-center pb-2">
           <div>
-            <h1 className="text-3xl font-bold">Welcome back,</h1>
-            <p className="text-muted-foreground">Manage your clients and property transactions</p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Welcome back, <span className="text-primary">{user?.name || "Agent"}</span>
+            </h1>
+            <p className="text-muted-foreground italic tracking-tight">
+              Managing your property ecosystem and master workflows
+            </p>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon"><Bell className="h-5 w-5" /></Button>
-            <Avatar><AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=agent" /><AvatarFallback>AG</AvatarFallback></Avatar>
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden md:block">
+                <p className="text-sm font-medium leading-none">{user?.name}</p>
+                <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-bold">PropSync Certified</p>
+              </div>
+              <Avatar className="h-10 w-10 border-2 border-primary/10 shadow-sm">
+                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} />
+                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <Button variant="ghost" size="icon" onClick={logout} title="Logout">
+                <LogOut className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Active Clients</CardTitle></CardHeader><CardContent><div className="flex justify-between"><div className="text-2xl font-bold">{activeCount}</div><Users className="h-5 w-5 text-muted-foreground" /></div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Pending Transactions</CardTitle></CardHeader><CardContent><div className="flex justify-between"><div className="text-2xl font-bold">{pendingCount}</div><Clock className="h-5 w-5 text-muted-foreground" /></div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Completed Deals</CardTitle></CardHeader><CardContent><div className="flex justify-between"><div className="text-2xl font-bold">{completedCount}</div><Home className="h-5 w-5 text-muted-foreground" /></div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total Transaction Value</CardTitle></CardHeader><CardContent><div className="flex justify-between"><div className="text-2xl font-bold">${totalValue.toLocaleString()}</div><DollarSign className="h-5 w-5 text-muted-foreground" /></div></CardContent></Card>
+        {/* --- Stats Grid --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-card-foreground">
+          <Card className="shadow-sm border-muted">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Portfolio</CardTitle>
+              <Users className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">{clients.length} Clients</div></CardContent>
+          </Card>
+          <Card className="shadow-sm border-muted">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active Deals</CardTitle>
+              <Clock className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">{activeCount} In-Progress</div></CardContent>
+          </Card>
+          <Card className="shadow-sm border-muted">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Template Library</CardTitle>
+              <LayoutTemplate className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">{templates.length} Saved Templates</div></CardContent>
+          </Card>
+          <Card className="shadow-sm border-muted">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pipeline Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">${totalValue.toLocaleString()}</div></CardContent>
+          </Card>
         </div>
 
-        {/* Clients List + Activity */}
+        {/* --- Main Workspace --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Clients */}
           <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader className="flex justify-between">
-                <div>
-                  <CardTitle>Client Management</CardTitle>
-                  <CardDescription>Manage your clients</CardDescription>
+            
+            {/* 1. Client Management Card */}
+            <Card className="border-muted shadow-sm overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between bg-accent/5 border-b py-4">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" /> 
+                  <div>
+                    <CardTitle className="text-lg">Client Management</CardTitle>
+                    <CardDescription>Track individual transaction progress</CardDescription>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Sort by" /></SelectTrigger>
+                    <SelectTrigger className="w-[120px] h-9 text-xs">
+                      <SelectValue placeholder="Sort" />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dueDate">Due Date</SelectItem>
-                      <SelectItem value="value">Transaction Value</SelectItem>
+                      <SelectItem value="value">Value</SelectItem>
                     </SelectContent>
                   </Select>
-                  <AddClientModal onClientAdded={fetchClients} />
+                  <AddClientModal onClientAdded={fetchData} />
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {loading ? (
-                  <p className="text-center text-muted-foreground py-6">Loading clients...</p>
+                   <div className="py-10 text-center italic text-muted-foreground text-sm">Syncing clients...</div>
                 ) : sortedClients.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-6">No clients yet.</p>
+                  <div className="py-10 text-center italic text-muted-foreground text-sm border-b border-dashed">
+                    No clients found. Add your first client to begin.
+                  </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="divide-y divide-muted">
                     {sortedClients.map(client => (
-                      <div key={client.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-accent/50 transition">
+                      <div 
+                        key={client.id} 
+                        onClick={() => navigate(`/timeline/${client.id}`)} 
+                        className="flex justify-between items-center p-5 hover:bg-accent/30 transition-all group cursor-pointer"
+                      >
                         <div className="flex items-center gap-4">
-                          <Avatar><AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${client.name}`} /><AvatarFallback>{client.name[0]}</AvatarFallback></Avatar>
+                          <Avatar className="h-11 w-11 border border-muted ring-2 ring-background group-hover:ring-primary/20 transition-all">
+                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${client.name}`} />
+                            <AvatarFallback>{client.name[0]}</AvatarFallback>
+                          </Avatar>
                           <div>
-                            <div className="font-medium">{client.name}</div>
-                            <div className="text-sm text-muted-foreground">{client.property || "No property info"}</div>
-                            <div className="flex gap-2 mt-1">
-                              {client.transactionType && <Badge variant="outline">{client.transactionType}</Badge>}
-                              <Badge variant={
-                                client.invite_status === "confirmed" ? "default" :
-                                client.invite_status === "pending" ? "secondary" :
-                                client.invite_status === "failed" ? "destructive" : "outline"
-                              }>
+                            <div className="font-bold text-sm tracking-tight">{client.name}</div>
+                            <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Home className="h-3 w-3" /> {client.property || "Unassigned"}
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                              <Badge variant="secondary" className="text-[9px] h-4 uppercase font-bold tracking-tight px-1.5">{client.transactionType || 'Standard'}</Badge>
+                              <Badge variant={client.invite_status === "confirmed" ? "default" : "outline"} className="text-[9px] h-4 uppercase font-bold tracking-tight px-1.5">
                                 {client.invite_status || "uninvited"}
                               </Badge>
                             </div>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={client.invite_status === "confirmed"}
-                          onClick={() => inviteClient(client.id)}
-                        >
-                          {client.invite_status === "pending" ? "Resend Invite" : "Send Invite"}
-                        </Button>
+                        <div className="flex items-center gap-3">
+                          <Button variant={client.invite_status === "pending" ? "outline" : "default"} size="sm" className="h-8 rounded-md text-[11px] font-bold" disabled={client.invite_status === "confirmed"} onClick={(e) => inviteClient(client.id, e)}>
+                            {client.invite_status === "pending" ? "Resend" : "Invite"}
+                          </Button>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* 2. Timeline Templates Card */}
+            <Card className="border-muted shadow-sm overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between bg-primary/5 border-b py-4">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle className="text-lg">Timeline Templates</CardTitle>
+                    <CardDescription>Pre-build standard roadmaps (BTO, Resale, etc.)</CardDescription>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate("/templates/builder")} className="border-primary/20 hover:bg-primary/5">
+                  <Plus className="h-4 w-4 mr-2" /> Create New Template
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-x divide-y border-b">
+                  {templates.length === 0 ? (
+                    <div className="col-span-2 py-10 text-center italic text-muted-foreground text-xs">
+                      No templates saved. Create your first blueprint to automate your workflow.
+                    </div>
+                  ) : (
+                    templates.map((template) => (
+                      <div 
+                        key={template.id} 
+                        className="p-5 hover:bg-accent/50 cursor-pointer group flex justify-between items-center transition-colors"
+                        onClick={() => navigate(`/templates/builder/${template.id}`)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary/10 p-2.5 rounded-xl text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                            <LayoutTemplate className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold tracking-tight">{template.template_name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Blueprint</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Activity Feed */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader><CardTitle>Recent Activity</CardTitle><CardDescription>Latest updates</CardDescription></CardHeader>
-              <CardContent>
-                <Tabs defaultValue="activity">
-                  <TabsList><TabsTrigger value="activity">Activity</TabsTrigger></TabsList>
-                  <TabsContent value="activity" className="space-y-4 mt-4">
-                    {activities.map(a => (
-                      <div key={a.id} className="p-3 border rounded-lg">
-                        <div className="font-medium">{a.action}</div>
-                        <div className="text-xs text-muted-foreground">{a.description}</div>
-                        <div className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</div>
-                      </div>
-                    ))}
-                  </TabsContent>
-                </Tabs>
+          {/* --- Activity Sidebar --- */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="h-full border-muted shadow-sm">
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    Activity Log
+                </CardTitle>
+                <CardDescription className="text-xs">Updates & notifications</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
+                  {activities.map((a) => (
+                    <div key={a.id} className="relative flex items-start gap-4 pl-10 group">
+                        <div className="absolute left-0 grid place-items-center w-10 h-10 rounded-full bg-background border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                           <CheckCircle2 className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-bold leading-none">{a.action}</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">{a.description}</p>
+                          <div className="text-[10px] text-primary/60 mt-2 flex items-center gap-1 font-bold uppercase tracking-widest">
+                              <Clock className="h-3 w-3" /> {new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>

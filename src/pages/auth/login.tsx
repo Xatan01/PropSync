@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext"; // ✅ Added this import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth(); // ✅ Use the login function from your context
 
   // Determine if current portal is for client or agent
   const isClient = !location.pathname.includes("agent");
@@ -33,50 +35,14 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // ✅ Always clear stale sessions before new login
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
+      // ✅ Use the login function from AuthContext instead of raw fetch
+      // This ensures 'setUser' is called so ProtectedRoute unlocks
+      const success = await login(formData.email, formData.password, role);
 
-      const endpoint = `${API_BASE_URL}/auth/login`;
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          role, // 👈 backend knows which portal you’re logging in from
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        const message = data.detail || data.error?.message || "Login failed";
-
-        if (message.toLowerCase().includes("email not confirmed")) {
-          alert(
-            "⚠️ Please confirm your email before logging in. Check your inbox for the verification link."
-          );
-          return;
-        }
-
-        throw new Error(message);
+      if (success) {
+        // navigate logic remains exactly as you had it
+        navigate(isClient ? "/client-dashboard" : "/dashboard");
       }
-
-      // ✅ Double check role match (defense-in-depth)
-      if (data.role && data.role !== role) {
-        alert(
-          `❌ This account is a ${data.role}. Please log in via the ${data.role} portal.`
-        );
-        return;
-      }
-
-      // ✅ Store session tokens in localStorage (so user stays logged in)
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refresh_token);
-
-      alert("✅ Logged in successfully!");
-      navigate(isClient ? "/client-dashboard" : "/dashboard");
     } catch (err) {
       alert("❌ Login failed: " + (err as Error).message);
     } finally {

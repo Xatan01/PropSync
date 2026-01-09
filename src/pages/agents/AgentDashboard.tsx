@@ -241,10 +241,10 @@ const AgentDashboard = () => {
                 </Button>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 divide-x divide-y border-b">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                   {templates.length === 0 ? (
                     <div className="col-span-2 py-10 text-center italic text-muted-foreground text-xs">
-                      No templates saved. Create your first blueprint to automate your workflow.
+                      No templates saved. Create your first timeline to automate your workflow.
                     </div>
                   ) : (
                     templates.map((template) => (
@@ -259,7 +259,6 @@ const AgentDashboard = () => {
                           </div>
                           <div>
                             <p className="text-sm font-bold tracking-tight">{template.template_name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Blueprint</p>
                           </div>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />

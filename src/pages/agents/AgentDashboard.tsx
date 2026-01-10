@@ -94,7 +94,7 @@ const AgentDashboard = () => {
   return (
     <div className="bg-background min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        
+
         {/* --- Header Section --- */}
         <div className="flex justify-between items-center pb-2">
           <div>
@@ -157,12 +157,12 @@ const AgentDashboard = () => {
         {/* --- Main Workspace --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* 1. Client Management Card */}
             <Card className="border-muted shadow-sm overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between bg-accent/5 border-b py-4">
                 <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" /> 
+                  <Users className="h-5 w-5 text-primary" />
                   <div>
                     <CardTitle className="text-lg">Client Management</CardTitle>
                     <CardDescription>Track individual transaction progress</CardDescription>
@@ -182,7 +182,7 @@ const AgentDashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 {loading ? (
-                   <div className="py-10 text-center italic text-muted-foreground text-sm">Syncing clients...</div>
+                  <div className="py-10 text-center italic text-muted-foreground text-sm">Syncing clients...</div>
                 ) : sortedClients.length === 0 ? (
                   <div className="py-10 text-center italic text-muted-foreground text-sm border-b border-dashed">
                     No clients found. Add your first client to begin.
@@ -190,9 +190,9 @@ const AgentDashboard = () => {
                 ) : (
                   <div className="divide-y divide-muted">
                     {sortedClients.map(client => (
-                      <div 
-                        key={client.id} 
-                        onClick={() => navigate(`/timeline/${client.id}`)} 
+                      <div
+                        key={client.id}
+                        onClick={() => navigate(`/timeline/${client.id}`)}
                         className="flex justify-between items-center p-5 hover:bg-accent/30 transition-all group cursor-pointer"
                       >
                         <div className="flex items-center gap-4">
@@ -203,7 +203,7 @@ const AgentDashboard = () => {
                           <div>
                             <div className="font-bold text-sm tracking-tight">{client.name}</div>
                             <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                                <Home className="h-3 w-3" /> {client.property || "Unassigned"}
+                              <Home className="h-3 w-3" /> {client.property || "Unassigned"}
                             </div>
                             <div className="flex gap-2 mt-2">
                               <Badge variant="secondary" className="text-[9px] h-4 uppercase font-bold tracking-tight px-1.5">{client.transactionType || 'Standard'}</Badge>
@@ -214,7 +214,13 @@ const AgentDashboard = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Button variant={client.invite_status === "pending" ? "outline" : "default"} size="sm" className="h-8 rounded-md text-[11px] font-bold" disabled={client.invite_status === "confirmed"} onClick={(e) => inviteClient(client.id, e)}>
+                          <Button
+                            variant={client.invite_status === "pending" ? "outline" : "default"}
+                            size="sm"
+                            className="h-8 rounded-md text-[11px] font-bold"
+                            disabled={client.invite_status === "confirmed"}
+                            onClick={(e) => inviteClient(client.id, e)}
+                          >
                             {client.invite_status === "pending" ? "Resend" : "Invite"}
                           </Button>
                           <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -236,10 +242,16 @@ const AgentDashboard = () => {
                     <CardDescription>Pre-build standard roadmaps (BTO, Resale, etc.)</CardDescription>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/templates/builder")} className="border-primary/20 hover:bg-primary/5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/templates/builder")}
+                  className="border-primary/20 hover:bg-primary/5"
+                >
                   <Plus className="h-4 w-4 mr-2" /> Create New Template
                 </Button>
               </CardHeader>
+
               <CardContent className="p-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                   {templates.length === 0 ? (
@@ -248,10 +260,10 @@ const AgentDashboard = () => {
                     </div>
                   ) : (
                     templates.map((template) => (
-                      <div 
-                        key={template.id} 
-                        className="p-5 hover:bg-accent/50 cursor-pointer group flex justify-between items-center transition-colors"
+                      <div
+                        key={template.id}
                         onClick={() => navigate(`/templates/builder/${template.id}`)}
+                        className="flex justify-between items-center p-5 rounded-lg border border-border bg-background cursor-pointer group transition-all hover:bg-accent/50 hover:border-primary/30 hover:shadow-sm"
                       >
                         <div className="flex items-center gap-3">
                           <div className="bg-primary/10 p-2.5 rounded-xl text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
@@ -275,8 +287,8 @@ const AgentDashboard = () => {
             <Card className="h-full border-muted shadow-sm">
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
-                    <Calendar className="h-5 w-5 text-primary" />
-                    Activity Log
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Activity Log
                 </CardTitle>
                 <CardDescription className="text-xs">Updates & notifications</CardDescription>
               </CardHeader>
@@ -284,16 +296,16 @@ const AgentDashboard = () => {
                 <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
                   {activities.map((a) => (
                     <div key={a.id} className="relative flex items-start gap-4 pl-10 group">
-                        <div className="absolute left-0 grid place-items-center w-10 h-10 rounded-full bg-background border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                           <CheckCircle2 className="w-4 h-4" />
+                      <div className="absolute left-0 grid place-items-center w-10 h-10 rounded-full bg-background border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="text-sm font-bold leading-none">{a.action}</p>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">{a.description}</p>
+                        <div className="text-[10px] text-primary/60 mt-2 flex items-center gap-1 font-bold uppercase tracking-widest">
+                          <Clock className="h-3 w-3" /> {new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
-                        <div className="flex flex-col">
-                          <p className="text-sm font-bold leading-none">{a.action}</p>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">{a.description}</p>
-                          <div className="text-[10px] text-primary/60 mt-2 flex items-center gap-1 font-bold uppercase tracking-widest">
-                              <Clock className="h-3 w-3" /> {new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -3,18 +3,37 @@ import { api } from "@/utils/api";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
-  Calendar, Clock, DollarSign, Home, Users, LogOut, CheckCircle2, ChevronRight, LayoutTemplate, Plus, BookOpen
+  Calendar,
+  Clock,
+  DollarSign,
+  Home,
+  Users,
+  LogOut,
+  CheckCircle2,
+  ChevronRight,
+  LayoutTemplate,
+  Plus,
+  BookOpen,
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import AddClientModal from "@/components/clients/AddClientModal";
 import { toast } from "sonner";
-import { Separator } from "@/components/ui/separator";
 
 interface Client {
   id: string;
@@ -23,7 +42,7 @@ interface Client {
   status?: string;
   transactionType?: string;
   value?: number;
-  invite_status?: string;
+  invite_status?: string; // "uninvited" | "pending" | "confirmed" (recommended)
 }
 
 interface Template {
@@ -39,6 +58,14 @@ interface Activity {
   created_at: string;
 }
 
+type InviteVariant = "default" | "outline" | "secondary";
+
+const getInviteUI = (status?: string): { label: string; disabled: boolean; variant: InviteVariant } => {
+  if (status === "confirmed") return { label: "Confirmed", disabled: true, variant: "secondary" };
+  if (status === "pending") return { label: "Resend", disabled: false, variant: "outline" };
+  return { label: "Invite", disabled: false, variant: "default" };
+};
+
 const AgentDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -51,15 +78,14 @@ const AgentDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Parallel fetch for industry-standard performance
       const [clientRes, tempRes, actRes] = await Promise.all([
         api.get("/clients"),
         api.get("/timeline/templates"),
-        api.get("/clients/activity")
+        api.get("/clients/activity"),
       ]);
-      setClients(clientRes.data);
-      setTemplates(tempRes.data);
-      setActivities(actRes.data);
+      setClients(clientRes.data || []);
+      setTemplates(tempRes.data || []);
+      setActivities(actRes.data || []);
     } catch (err) {
       toast.error("Failed to sync dashboard data");
     } finally {
@@ -74,28 +100,40 @@ const AgentDashboard = () => {
   const inviteClient = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await api.post(`/clients/invite/${id}`);
-      toast.success("Invite sent successfully!");
-      fetchData();
-    } catch {
-      toast.error("Failed to send invite.");
+      const res = await api.post(`/clients/invite/${id}`);
+      const status = res?.data?.status;
+
+      // Expect backend to return one of these statuses (recommended):
+      // "sent" | "already_invited" | "already_confirmed" | "invited"
+      if (status === "sent") {
+        toast.success("Invite email sent.");
+      } else if (status === "already_invited") {
+        toast.message("Invite already pending — resent.");
+      } else if (status === "already_confirmed") {
+        toast.message("Client already confirmed and can log in.");
+      } else {
+        // fallback for older backend response
+        toast.success("Invite updated.");
+      }
+
+      await fetchData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to send invite.");
     }
   };
 
   const sortedClients = [...clients].sort((a, b) => {
-    if (sortBy === "value" && a.value && b.value) return (b.value || 0) - (a.value || 0);
+    if (sortBy === "value") return (b.value || 0) - (a.value || 0);
     return 0;
   });
 
-  // KPI Calculations
-  const activeCount = clients.filter(c => c.status === "active").length;
+  const activeCount = clients.filter((c) => c.status === "active").length;
   const totalValue = clients.reduce((sum, c) => sum + (c.value || 0), 0);
 
   return (
     <div className="bg-background min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-
-        {/* --- Header Section --- */}
+        {/* Header */}
         <div className="flex justify-between items-center pb-2">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
@@ -105,16 +143,23 @@ const AgentDashboard = () => {
               Managing your property ecosystem and master workflows
             </p>
           </div>
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-medium leading-none">{user?.name}</p>
-                <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-bold">PropSync Certified</p>
+                <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-bold">
+                  PropSync Certified
+                </p>
               </div>
+
               <Avatar className="h-10 w-10 border-2 border-primary/10 shadow-sm">
-                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} />
+                <AvatarImage
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`}
+                />
                 <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
               </Avatar>
+
               <Button variant="ghost" size="icon" onClick={logout} title="Logout">
                 <LogOut className="h-5 w-5 text-muted-foreground" />
               </Button>
@@ -122,43 +167,61 @@ const AgentDashboard = () => {
           </div>
         </div>
 
-        {/* --- Stats Grid --- */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-card-foreground">
           <Card className="shadow-sm border-muted">
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Portfolio</CardTitle>
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Portfolio
+              </CardTitle>
               <Users className="h-4 w-4 text-primary" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{clients.length} Clients</div></CardContent>
+            <CardContent>
+              <div className="text-2xl font-bold">{clients.length} Clients</div>
+            </CardContent>
           </Card>
+
           <Card className="shadow-sm border-muted">
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active Deals</CardTitle>
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Active Deals
+              </CardTitle>
               <Clock className="h-4 w-4 text-primary" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{activeCount} In-Progress</div></CardContent>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeCount} In-Progress</div>
+            </CardContent>
           </Card>
+
           <Card className="shadow-sm border-muted">
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Template Library</CardTitle>
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Template Library
+              </CardTitle>
               <LayoutTemplate className="h-4 w-4 text-primary" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{templates.length} Saved Templates</div></CardContent>
+            <CardContent>
+              <div className="text-2xl font-bold">{templates.length} Saved Templates</div>
+            </CardContent>
           </Card>
+
           <Card className="shadow-sm border-muted">
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pipeline Value</CardTitle>
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Pipeline Value
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-primary" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">${totalValue.toLocaleString()}</div></CardContent>
+            <CardContent>
+              <div className="text-2xl font-bold">${totalValue.toLocaleString()}</div>
+            </CardContent>
           </Card>
         </div>
 
-        {/* --- Main Workspace --- */}
+        {/* Main */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-
-            {/* 1. Client Management Card */}
+            {/* Client Management */}
             <Card className="border-muted shadow-sm overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between bg-accent/5 border-b py-4">
                 <div className="flex items-center gap-2">
@@ -168,6 +231,7 @@ const AgentDashboard = () => {
                     <CardDescription>Track individual transaction progress</CardDescription>
                   </div>
                 </div>
+
                 <div className="flex gap-2">
                   <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger className="w-[120px] h-9 text-xs">
@@ -177,62 +241,85 @@ const AgentDashboard = () => {
                       <SelectItem value="value">Value</SelectItem>
                     </SelectContent>
                   </Select>
+
                   <AddClientModal onClientAdded={fetchData} />
                 </div>
               </CardHeader>
+
               <CardContent className="p-0">
                 {loading ? (
-                  <div className="py-10 text-center italic text-muted-foreground text-sm">Syncing clients...</div>
+                  <div className="py-10 text-center italic text-muted-foreground text-sm">
+                    Syncing clients...
+                  </div>
                 ) : sortedClients.length === 0 ? (
                   <div className="py-10 text-center italic text-muted-foreground text-sm border-b border-dashed">
                     No clients found. Add your first client to begin.
                   </div>
                 ) : (
                   <div className="divide-y divide-muted">
-                    {sortedClients.map(client => (
-                      <div
-                        key={client.id}
-                        onClick={() => navigate(`/timeline/${client.id}`)}
-                        className="flex justify-between items-center p-5 hover:bg-accent/30 transition-all group cursor-pointer"
-                      >
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-11 w-11 border border-muted ring-2 ring-background group-hover:ring-primary/20 transition-all">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${client.name}`} />
-                            <AvatarFallback>{client.name[0]}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-bold text-sm tracking-tight">{client.name}</div>
-                            <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Home className="h-3 w-3" /> {client.property || "Unassigned"}
-                            </div>
-                            <div className="flex gap-2 mt-2">
-                              <Badge variant="secondary" className="text-[9px] h-4 uppercase font-bold tracking-tight px-1.5">{client.transactionType || 'Standard'}</Badge>
-                              <Badge variant={client.invite_status === "confirmed" ? "default" : "outline"} className="text-[9px] h-4 uppercase font-bold tracking-tight px-1.5">
-                                {client.invite_status || "uninvited"}
-                              </Badge>
+                    {sortedClients.map((client) => {
+                      const ui = getInviteUI(client.invite_status);
+
+                      return (
+                        <div
+                          key={client.id}
+                          onClick={() => navigate(`/timeline/${client.id}`)}
+                          className="flex justify-between items-center p-5 hover:bg-accent/30 transition-all group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-4">
+                            <Avatar className="h-11 w-11 border border-muted ring-2 ring-background group-hover:ring-primary/20 transition-all">
+                              <AvatarImage
+                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${client.name}`}
+                              />
+                              <AvatarFallback>{client.name?.[0]}</AvatarFallback>
+                            </Avatar>
+
+                            <div>
+                              <div className="font-bold text-sm tracking-tight">{client.name}</div>
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Home className="h-3 w-3" /> {client.property || "Unassigned"}
+                              </div>
+
+                              <div className="flex gap-2 mt-2">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[9px] h-4 uppercase font-bold tracking-tight px-1.5"
+                                >
+                                  {client.transactionType || "Standard"}
+                                </Badge>
+
+                                <Badge
+                                  variant={client.invite_status === "confirmed" ? "default" : "outline"}
+                                  className="text-[9px] h-4 uppercase font-bold tracking-tight px-1.5"
+                                >
+                                  {client.invite_status || "uninvited"}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
+
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant={ui.variant}
+                              size="sm"
+                              className="h-8 rounded-md text-[11px] font-bold"
+                              disabled={ui.disabled}
+                              onClick={(e) => inviteClient(client.id, e)}
+                            >
+                              {ui.label}
+                            </Button>
+
+                            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Button
-                            variant={client.invite_status === "pending" ? "outline" : "default"}
-                            size="sm"
-                            className="h-8 rounded-md text-[11px] font-bold"
-                            disabled={client.invite_status === "confirmed"}
-                            onClick={(e) => inviteClient(client.id, e)}
-                          >
-                            {client.invite_status === "pending" ? "Resend" : "Invite"}
-                          </Button>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* 2. Timeline Templates Card */}
+            {/* Templates */}
             <Card className="border-muted shadow-sm overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between bg-primary/5 border-b py-4">
                 <div className="flex items-center gap-2">
@@ -242,6 +329,7 @@ const AgentDashboard = () => {
                     <CardDescription>Pre-build standard roadmaps (BTO, Resale, etc.)</CardDescription>
                   </div>
                 </div>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -270,9 +358,12 @@ const AgentDashboard = () => {
                             <LayoutTemplate className="h-5 w-5" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold tracking-tight">{template.template_name}</p>
+                            <p className="text-sm font-bold tracking-tight">
+                              {template.template_name}
+                            </p>
                           </div>
                         </div>
+
                         <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                       </div>
                     ))
@@ -282,7 +373,7 @@ const AgentDashboard = () => {
             </Card>
           </div>
 
-          {/* --- Activity Sidebar --- */}
+          {/* Activity Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="h-full border-muted shadow-sm">
               <CardHeader className="pb-4 border-b">
@@ -292,23 +383,37 @@ const AgentDashboard = () => {
                 </CardTitle>
                 <CardDescription className="text-xs">Updates & notifications</CardDescription>
               </CardHeader>
+
               <CardContent className="pt-6">
-                <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
-                  {activities.map((a) => (
-                    <div key={a.id} className="relative flex items-start gap-4 pl-10 group">
-                      <div className="absolute left-0 grid place-items-center w-10 h-10 rounded-full bg-background border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-sm font-bold leading-none">{a.action}</p>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">{a.description}</p>
-                        <div className="text-[10px] text-primary/60 mt-2 flex items-center gap-1 font-bold uppercase tracking-widest">
-                          <Clock className="h-3 w-3" /> {new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {activities.length === 0 ? (
+                  <div className="py-8 text-center italic text-muted-foreground text-xs">
+                    No activity yet.
+                  </div>
+                ) : (
+                  <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
+                    {activities.map((a) => (
+                      <div key={a.id} className="relative flex items-start gap-4 pl-10 group">
+                        <div className="absolute left-0 grid place-items-center w-10 h-10 rounded-full bg-background border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                          <CheckCircle2 className="w-4 h-4" />
+                        </div>
+
+                        <div className="flex flex-col">
+                          <p className="text-sm font-bold leading-none">{a.action}</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">
+                            {a.description}
+                          </p>
+                          <div className="text-[10px] text-primary/60 mt-2 flex items-center gap-1 font-bold uppercase tracking-widest">
+                            <Clock className="h-3 w-3" />{" "}
+                            {new Date(a.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -78,9 +78,7 @@ const TimelineNode = ({ data, selected }: any) => {
       </div>
 
       <div className="mt-4 text-center">
-        <p className="text-[10px] font-bold text-primary uppercase tracking-tighter mb-1">
-          {formatDate(data.date)}
-        </p>
+        <p className="text-[10px] font-bold text-primary uppercase tracking-tighter mb-1">{formatDate(data.date)}</p>
         <h4 className={`text-sm font-semibold leading-tight px-2 ${selected ? "text-primary" : "text-foreground"}`}>
           {data.title}
         </h4>
@@ -123,7 +121,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
-  const selectedNode = nodes.find((n: any) => n.id === selectedNodeId);
+  const selectedNode = (nodes as any[]).find((n: any) => n.id === selectedNodeId);
 
   const filteredTemplates = useMemo(() => {
     if (categoryFilter === "ALL") return templates;
@@ -139,13 +137,13 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch available templates (used for both client apply + template editor library)
       const tempRes = await api.get("/timeline/templates");
       setTemplates(tempRes.data);
 
-      // 2. Dynamic categories from DB
-      const dbCategories = Array.from(new Set(tempRes.data.map((t: any) => (t.category || "").toUpperCase())))
-        .filter(Boolean) as string[];
+      const dbCategories = Array.from(
+        new Set(tempRes.data.map((t: any) => (t.category || "").toUpperCase()))
+      ).filter(Boolean) as string[];
+
       if (dbCategories.length > 0) {
         setCategories((prev) => Array.from(new Set([...prev, ...dbCategories])));
       }
@@ -165,7 +163,11 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
         }
       } else if (clientId) {
         const [clientRes, tlRes] = await Promise.all([api.get(`/clients/${clientId}`), api.get(`/timeline/${clientId}`)]);
-        setHeaderInfo({ title: clientRes.data.name, subtitle: clientRes.data.property || "Active Journey", category: "CLIENT" });
+        setHeaderInfo({
+          title: clientRes.data.name,
+          subtitle: clientRes.data.property || "Active Journey",
+          category: "CLIENT",
+        });
 
         if (tlRes.data?.nodes?.length > 0) {
           setNodes(tlRes.data.nodes);
@@ -174,7 +176,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
           setIsDialogOpen(true);
         }
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to load journey data");
     } finally {
       setLoading(false);
@@ -185,7 +187,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
     loadData();
   }, [loadData]);
 
-  // Unified Save: Handles "Update Template", "Update Client", and "Save Client Progress as New Template"
+  // Unified Save
   const handleSave = async (saveAsNewTemplate = false) => {
     setSaving(true);
     try {
@@ -205,7 +207,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
         await api.post(`/timeline/save/${clientId}`, { nodes, edges });
         toast.success("Client journey updated successfully");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to save changes.");
     } finally {
       setSaving(false);
@@ -219,9 +221,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
     try {
       await api.delete(`/timeline/templates/${id}`);
       toast.success("Template deleted");
-      // refresh list
       await loadData();
-      // if you deleted the current one, go to blank builder
       if (id === templateId) navigate("/templates/builder");
     } catch {
       toast.error("Failed to delete template");
@@ -264,7 +264,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
 
   const handleAddNode = (type: "task" | "milestone") => {
     const id = `n-${Date.now()}`;
-    const newX = nodes.length * 250;
+    const newX = (nodes as any[]).length * 250;
     const newNode = {
       id,
       type: "timelineNode",
@@ -277,14 +277,16 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
         date: new Date().toISOString().split("T")[0],
       },
     };
-    const updatedNodes = [...nodes, newNode];
+    const updatedNodes = [...(nodes as any[]), newNode];
     setNodes(updatedNodes as any);
     setEdges(buildEdges(updatedNodes) as any);
     setSelectedNodeId(id);
   };
 
   const updateNodeData = (field: string, value: any) => {
-    setNodes((nds: any) => nds.map((n: any) => (n.id === selectedNodeId ? { ...n, data: { ...n.data, [field]: value } } : n)));
+    setNodes((nds: any) =>
+      nds.map((n: any) => (n.id === selectedNodeId ? { ...n, data: { ...n.data, [field]: value } } : n))
+    );
   };
 
   const deleteNode = (nodeId: string) => {
@@ -316,22 +318,34 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
           <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Exit
           </Button>
+
           <Separator orientation="vertical" className="h-6" />
+
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <div className="font-bold text-lg tracking-tight">{headerInfo.title}</div>
+
+              {/* Rename (pencil) */}
               {isTemplateMode && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={handleOpenRename}
-                  title="Rename"
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleOpenRename} title="Rename">
                   <Pencil className="h-4 w-4 text-muted-foreground" />
                 </Button>
               )}
+
+              {/* Discard (bin icon) to the RIGHT of edit */}
+              {isTemplateMode && templateId && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                  onClick={() => handleDeleteTemplateById(templateId)}
+                  title="Discard template"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
+
             <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-widest">{headerInfo.subtitle}</p>
           </div>
         </div>
@@ -348,37 +362,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
             </Button>
           )}
 
-          {isTemplateMode && (
-            <div className="flex items-center gap-2">
-              <Select
-                value={headerInfo.category}
-                onValueChange={(val) => setHeaderInfo((prev) => ({ ...prev, category: val }))}
-              >
-                <SelectTrigger className="w-[160px] h-9 text-xs">
-                  <SelectValue placeholder="CATEGORY" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {templateId && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-destructive hover:bg-destructive/10"
-                  onClick={() => handleDeleteTemplateById(templateId)}
-                  title="Delete template"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          )}
+          {/* REMOVED: category dropdown beside Save Changes */}
 
           <Button size="sm" onClick={() => handleSave(false)} disabled={saving} className="px-6 font-bold shadow-md">
             {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Save className="h-3 w-3 mr-2" />}
@@ -398,9 +382,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
           {isTemplateMode && (
             <Card className="shadow-sm border-muted">
               <CardHeader className="p-4 pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Template Library
-                </CardTitle>
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Template Library</CardTitle>
                 <Button
                   variant="outline"
                   size="sm"
@@ -412,11 +394,9 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
               </CardHeader>
 
               <CardContent className="p-4 pt-0 space-y-3">
-                {/* Category filter styled like dashboard */}
+                {/* Category filter */}
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
-                    Category
-                  </Label>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Category</Label>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                     <SelectTrigger className="w-full h-9 text-xs">
                       <SelectValue placeholder="ALL" />
@@ -432,18 +412,13 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
                   </Select>
                 </div>
 
-                {/* Templates dropdown that matches the dashboard look/feel, no per-item list outside */}
+                {/* Templates dropdown */}
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
-                    Templates
-                  </Label>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Templates</Label>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between h-11 border-muted bg-background hover:bg-accent/40"
-                      >
+                      <Button variant="outline" className="w-full justify-between h-11 border-muted bg-background hover:bg-accent/40">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="bg-primary/10 p-2.5 rounded-xl text-primary">
                             <LayoutTemplate className="h-4 w-4" />
@@ -452,9 +427,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
                             <div className="text-sm font-bold tracking-tight truncate">
                               {currentTemplate?.template_name || (templateId ? "Selected Template" : "Select a template")}
                             </div>
-                            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-                              Template Editor
-                            </div>
+                            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Template Editor</div>
                           </div>
                         </div>
                         <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -463,9 +436,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
 
                     <DropdownMenuContent className="w-[300px] p-2" align="start">
                       {filteredTemplates.length === 0 ? (
-                        <div className="p-3 text-xs text-muted-foreground italic">
-                          No templates found for this category.
-                        </div>
+                        <div className="p-3 text-xs text-muted-foreground italic">No templates found for this category.</div>
                       ) : (
                         filteredTemplates.map((t) => (
                           <DropdownMenuItem
@@ -473,46 +444,12 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
                             className="cursor-pointer rounded-lg px-2 py-2 focus:bg-accent/50"
                             onClick={() => goToTemplate(t.id)}
                           >
-                            <div className="flex w-full items-center justify-between gap-3">
-                              {/* Left: icon + name (dashboard-style) */}
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="bg-primary/10 p-2.5 rounded-xl text-primary">
-                                  <LayoutTemplate className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-sm font-bold tracking-tight truncate">{t.template_name}</div>
-                                </div>
+                            <div className="flex w-full items-center gap-3 min-w-0">
+                              <div className="bg-primary/10 p-2.5 rounded-xl text-primary">
+                                <LayoutTemplate className="h-4 w-4" />
                               </div>
-
-                              {/* Right: edit/delete icons INSIDE dropdown */}
-                              <div className="flex items-center gap-1 shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  title="Edit"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    goToTemplate(t.id);
-                                  }}
-                                >
-                                  <Pencil className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                  title="Delete"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleDeleteTemplateById(t.id);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold tracking-tight truncate">{t.template_name}</div>
                               </div>
                             </div>
                           </DropdownMenuItem>
@@ -528,16 +465,10 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
           {/* Builder Tools */}
           <Card className="shadow-none border-muted">
             <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">
-                Builder Tools
-              </CardTitle>
+              <CardTitle className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">Builder Tools</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-2">
-              <Button
-                onClick={() => handleAddNode("task")}
-                variant="outline"
-                className="w-full justify-start border-dashed h-9 text-xs"
-              >
+              <Button onClick={() => handleAddNode("task")} variant="outline" className="w-full justify-start border-dashed h-9 text-xs">
                 <Plus className="w-3 h-3 mr-2 text-primary" /> New Step
               </Button>
               <Button
@@ -554,9 +485,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
           {selectedNode ? (
             <Card className="shadow-none border-primary/20 animate-in slide-in-from-left-2">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">
-                  Properties
-                </CardTitle>
+                <CardTitle className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">Properties</CardTitle>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -569,20 +498,11 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
               <CardContent className="p-4 pt-0 space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">Title</Label>
-                  <Input
-                    value={selectedNode.data.title}
-                    onChange={(e) => updateNodeData("title", e.target.value)}
-                    className="h-9 text-xs"
-                  />
+                  <Input value={selectedNode.data.title} onChange={(e) => updateNodeData("title", e.target.value)} className="h-9 text-xs" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">Target Date</Label>
-                  <Input
-                    type="date"
-                    value={selectedNode.data.date}
-                    onChange={(e) => updateNodeData("date", e.target.value)}
-                    className="h-9 text-xs"
-                  />
+                  <Input type="date" value={selectedNode.data.date} onChange={(e) => updateNodeData("date", e.target.value)} className="h-9 text-xs" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">Client Instructions</Label>
@@ -618,12 +538,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
               </TabsList>
 
               {!isTemplateMode && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsDialogOpen(true)}
-                  className="text-[10px] h-7 border-primary/20 hover:bg-primary/5"
-                >
+                <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)} className="text-[10px] h-7 border-primary/20 hover:bg-primary/5">
                   Apply Template
                 </Button>
               )}
@@ -648,11 +563,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
             <TabsContent value="list" className="flex-1 m-0 p-8 overflow-y-auto">
               <div className="max-w-2xl mx-auto space-y-4">
                 {(nodes as any[]).map((n: any, i: number) => (
-                  <Card
-                    key={n.id}
-                    className="flex gap-4 items-start p-5 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => setSelectedNodeId(n.id)}
-                  >
+                  <Card key={n.id} className="flex gap-4 items-start p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedNodeId(n.id)}>
                     <div className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                       {i + 1}
                     </div>
@@ -663,9 +574,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
                           {n.data.type}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">
-                        {n.data.description || "No instructions provided."}
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">{n.data.description || "No instructions provided."}</p>
                       <div className="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-primary uppercase">
                         <Calendar className="w-3 h-3" /> {formatDate(n.data.date)}
                       </div>

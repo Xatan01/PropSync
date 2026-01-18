@@ -24,6 +24,7 @@ import {
   LayoutTemplate,
   Plus,
   BookOpen,
+  Pencil,
 } from "lucide-react";
 import {
   Select,
@@ -33,11 +34,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import AddClientModal from "@/components/clients/AddClientModal";
+import EditClientModal from "@/components/clients/EditClientModal";
 import { toast } from "sonner";
 
 interface Client {
   id: string;
   name: string;
+  email?: string;
+  phone?: string;
   property?: string;
   status?: string;
   transactionType?: string;
@@ -83,7 +87,12 @@ const AgentDashboard = () => {
         api.get("/timeline/templates"),
         api.get("/clients/activity"),
       ]);
-      setClients(clientRes.data || []);
+      const normalizedClients = (clientRes.data || []).map((client: any) => ({
+        ...client,
+        phone: client.phone ?? client.phone_number ?? "",
+        transactionType: client.transactionType ?? client.transaction_type ?? "",
+      }));
+      setClients(normalizedClients);
       setTemplates(tempRes.data || []);
       setActivities(actRes.data || []);
     } catch (err) {
@@ -298,12 +307,15 @@ const AgentDashboard = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <Button
-                              variant={ui.variant}
-                              size="sm"
-                              className="h-8 rounded-md text-[11px] font-bold"
-                              disabled={ui.disabled}
+                        <div className="flex items-center gap-3">
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <EditClientModal client={client} onClientUpdated={fetchData} />
+                          </div>
+                          <Button
+                            variant={ui.variant}
+                            size="sm"
+                            className="h-8 rounded-md text-[11px] font-bold"
+                            disabled={ui.disabled}
                               onClick={(e) => inviteClient(client.id, e)}
                             >
                               {ui.label}

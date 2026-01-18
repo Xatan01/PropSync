@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock } from "lucide-react";
+import { getTokenKey, getUserKey } from "@/utils/authTokens";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -22,8 +23,9 @@ const Login = () => {
 
   // Clear any old session when page loads
   useEffect(() => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    localStorage.removeItem(getTokenKey(role, "access"));
+    localStorage.removeItem(getTokenKey(role, "refresh"));
+    localStorage.removeItem(getUserKey(role));
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

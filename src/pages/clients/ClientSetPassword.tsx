@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/utils/api";
 import { toast } from "sonner";
+import { getTokenKey, getUserKey } from "@/utils/authTokens";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,16 @@ function parseHashTokens(hash: string) {
   };
 }
 
+function getPasswordErrorMessage(err: any) {
+  const detail = err?.response?.data?.detail || "";
+  if (typeof detail === "string") {
+    if (detail.toLowerCase().includes("new password should be different")) {
+      return "New password must be different from your previous password.";
+    }
+  }
+  return detail || "Failed to set password.";
+}
+
 const ClientSetPassword = () => {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -29,8 +40,9 @@ const ClientSetPassword = () => {
 
   // 1) ALWAYS clear any existing session tokens (prevents agent session hijacking invite)
   useEffect(() => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    localStorage.removeItem(getTokenKey("client", "access"));
+    localStorage.removeItem(getTokenKey("client", "refresh"));
+    localStorage.removeItem(getUserKey("client"));
   }, []);
 
   const tokens = useMemo(() => parseHashTokens(window.location.hash), []);
@@ -70,7 +82,7 @@ const ClientSetPassword = () => {
       // Send to client login
       navigate("/client-login", { replace: true });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || "Failed to set password.");
+      toast.error(getPasswordErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

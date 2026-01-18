@@ -1,4 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  AuthRole,
+  clearActiveRole,
+  getTokenKey,
+  getUserKey,
+  resolveActiveRole,
+  setActiveRole,
+} from "@/utils/authTokens";
 
 interface AuthUser {
   name: string;
@@ -8,7 +16,7 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string, role: string) => Promise<boolean>;
+  login: (email: string, password: string, role: AuthRole) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -21,8 +29,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 🔁 Restore session on refresh
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("access_token");
+    const legacyUser = localStorage.getItem("user");
+    const legacyAccess = localStorage.getItem("access_token");
+    const legacyRefresh = localStorage.getItem("refresh_token");
+    const hasAgentToken = localStorage.getItem(getTokenKey("agent", "access"));
+
+    if (legacyUser && legacyAccess && !hasAgentToken) {
+      localStorage.setItem(getUserKey("agent"), legacyUser);
+      localStorage.setItem(getTokenKey("agent", "access"), legacyAccess);
+      if (legacyRefresh) {
+        localStorage.setItem(getTokenKey("agent", "refresh"), legacyRefresh);
+      }
+      setActiveRole("agent");
+      localStorage.removeItem("user");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+    }
+
+    const role = resolveActiveRole();
+    const storedUser = localStorage.getItem(getUserKey(role));
+    const token = localStorage.getItem(getTokenKey(role, "access"));
 
     if (storedUser && token) {
       setUser(JSON.parse(storedUser));
@@ -31,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string, role: string) => {
+  const login = async (email: string, password: string, role: AuthRole) => {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -41,24 +67,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Login failed");
 
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("refresh_token", data.refresh_token);
+    setActiveRole(role);
+    localStorage.setItem(getTokenKey(role, "access"), data.access_token);
+    localStorage.setItem(getTokenKey(role, "refresh"), data.refresh_token);
 
     const userData = {
       name: data.name,   // ✅ comes from backend
       role: data.role,
     };
 
-    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem(getUserKey(role), JSON.stringify(userData));
     setUser(userData);
 
     return true;
   };
 
   const logout = () => {
-    localStorage.clear();
+    const role = resolveActiveRole();
+    localStorage.removeItem(getTokenKey(role, "access"));
+    localStorage.removeItem(getTokenKey(role, "refresh"));
+    localStorage.removeItem(getUserKey(role));
+    clearActiveRole();
     setUser(null);
-    window.location.href = "/agent-login";
+    window.location.href = role === "client" ? "/client-login" : "/agent-login";
   };
 
   return (

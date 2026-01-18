@@ -38,6 +38,8 @@ export default function EditClientModal({
     transactionType: "",
   });
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [originalEmail, setOriginalEmail] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +50,7 @@ export default function EditClientModal({
       property: client.property || "",
       transactionType: client.transactionType || "",
     });
+    setOriginalEmail(client.email || "");
   }, [open, client]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -57,9 +60,12 @@ export default function EditClientModal({
     e.preventDefault();
     setLoading(true);
     try {
+      const emailChanged =
+        (originalEmail || "").trim().toLowerCase() !== form.email.trim().toLowerCase();
       const payload = {
         ...form,
         transaction_type: form.transactionType,
+        ...(emailChanged ? { invite_status: "uninvited" } : {}),
       };
       await api.patch(`/clients/${client.id}`, payload);
       toast.success("Client details updated.");
@@ -69,6 +75,21 @@ export default function EditClientModal({
       toast.error(err?.response?.data?.detail || "Failed to update client.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this client? This action cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/clients/${client.id}`);
+      toast.success("Client deleted.");
+      onClientUpdated();
+      setOpen(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to delete client.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -110,6 +131,15 @@ export default function EditClientModal({
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Saving..." : "Save Changes"}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            className="w-full"
+            disabled={deleting}
+            onClick={handleDelete}
+          >
+            {deleting ? "Deleting..." : "Delete Client"}
           </Button>
         </form>
       </DialogContent>

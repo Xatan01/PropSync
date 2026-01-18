@@ -117,7 +117,9 @@ const AgentDashboard = () => {
       if (status === "sent") {
         toast.success("Invite email sent.");
       } else if (status === "already_invited") {
-        toast.message("Invite already pending — resent.");
+        toast.message("Invite already pending - resent.");
+      } else if (status === "already_registered") {
+        toast.message("Email already registered. Ask the client to log in or reset their password.");
       } else if (status === "already_confirmed") {
         toast.message("Client already confirmed and can log in.");
       } else {
@@ -436,3 +438,5 @@ const AgentDashboard = () => {
 };
 
 export default AgentDashboard;
+
+

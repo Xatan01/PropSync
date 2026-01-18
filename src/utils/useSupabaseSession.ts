@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { getActiveRole, getTokenKey } from "@/utils/authTokens";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -8,17 +9,19 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
  */
 export function useSupabaseSession() {
   useEffect(() => {
-    const refreshToken = localStorage.getItem("refresh_token");
+    const role = getActiveRole();
+    const refreshToken = localStorage.getItem(getTokenKey(role, "refresh"));
 
-    // ⏱️ Immediately try refreshing once at startup
+    // Immediately try refreshing once at startup
     if (refreshToken) refreshSession();
 
-    // 🔁 Schedule silent refresh every 55 minutes (before access token expires)
+    // Schedule silent refresh every 55 minutes (before access token expires)
     const interval = setInterval(refreshSession, 55 * 60 * 1000);
 
     async function refreshSession() {
       try {
-        const refreshToken = localStorage.getItem("refresh_token");
+        const role = getActiveRole();
+        const refreshToken = localStorage.getItem(getTokenKey(role, "refresh"));
         if (!refreshToken) return;
 
         const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -30,14 +33,15 @@ export function useSupabaseSession() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Refresh failed");
 
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("refresh_token", data.refresh_token);
-        console.log("🔄 Access token refreshed");
+        localStorage.setItem(getTokenKey(role, "access"), data.access_token);
+        localStorage.setItem(getTokenKey(role, "refresh"), data.refresh_token);
+        console.log("Access token refreshed");
       } catch (err) {
         console.warn("Session refresh failed, logging out...");
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        window.location.href = "/agent-login";
+        const role = getActiveRole();
+        localStorage.removeItem(getTokenKey(role, "access"));
+        localStorage.removeItem(getTokenKey(role, "refresh"));
+        window.location.href = role === "client" ? "/client-login" : "/agent-login";
       }
     }
 

@@ -10,9 +10,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
+  Bell,
   Calendar,
   Clock,
   DollarSign,
@@ -78,6 +80,8 @@ const AgentDashboard = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [sortBy, setSortBy] = useState<string>("value");
   const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [inviteFilter, setInviteFilter] = useState<string>("all");
 
   const fetchData = async () => {
     setLoading(true);
@@ -106,8 +110,8 @@ const AgentDashboard = () => {
     fetchData();
   }, []);
 
-  const inviteClient = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const inviteClient = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     try {
       const res = await api.post(`/clients/invite/${id}`);
       const status = res?.data?.status;
@@ -133,10 +137,36 @@ const AgentDashboard = () => {
     }
   };
 
-  const sortedClients = [...clients].sort((a, b) => {
+  const filteredClients = clients.filter((client) => {
+    const query = searchTerm.trim().toLowerCase();
+    const matchesQuery =
+      !query ||
+      client.name?.toLowerCase().includes(query) ||
+      client.email?.toLowerCase().includes(query) ||
+      client.property?.toLowerCase().includes(query);
+    const matchesInvite =
+      inviteFilter === "all" || (client.invite_status || "uninvited") === inviteFilter;
+    return matchesQuery && matchesInvite;
+  });
+
+  const sortedClients = [...filteredClients].sort((a, b) => {
     if (sortBy === "value") return (b.value || 0) - (a.value || 0);
     return 0;
   });
+
+  const actionItems = clients
+    .filter((client) => ["uninvited", "pending"].includes(client.invite_status || "uninvited"))
+    .slice(0, 5)
+    .map((client) => ({
+      id: client.id,
+      title:
+        (client.invite_status || "uninvited") === "pending"
+          ? "Resend invite"
+          : "Invite client",
+      description: `${client.name} • ${client.email || "no email"}`,
+      actionLabel: (client.invite_status || "uninvited") === "pending" ? "Resend" : "Invite",
+      inviteStatus: client.invite_status || "uninvited",
+    }));
 
   const activeCount = clients.filter((c) => c.status === "active").length;
   const totalValue = clients.reduce((sum, c) => sum + (c.value || 0), 0);
@@ -258,6 +288,30 @@ const AgentDashboard = () => {
               </CardHeader>
 
               <CardContent className="p-0">
+                <div className="flex flex-col gap-2 px-4 py-3 border-b bg-background">
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <Input
+                      placeholder="Search name, email, or property..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="h-9 text-xs"
+                    />
+                    <Select value={inviteFilter} onValueChange={setInviteFilter}>
+                      <SelectTrigger className="w-[180px] h-9 text-xs">
+                        <SelectValue placeholder="Invite status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All invites</SelectItem>
+                        <SelectItem value="uninvited">Uninvited</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                    {sortedClients.length} clients shown
+                  </div>
+                </div>
                 {loading ? (
                   <div className="py-10 text-center italic text-muted-foreground text-sm">
                     Syncing clients...
@@ -267,14 +321,14 @@ const AgentDashboard = () => {
                     No clients found. Add your first client to begin.
                   </div>
                 ) : (
-                  <div className="divide-y divide-muted">
+                  <div className="divide-y divide-muted max-h-[520px] overflow-y-auto">
                     {sortedClients.map((client) => {
                       const ui = getInviteUI(client.invite_status);
 
                       return (
                         <div
                           key={client.id}
-                          onClick={() => navigate(`/timeline/${client.id}`)}
+                          onClick={() => navigate(`/clients/${client.id}`)}
                           className="flex justify-between items-center p-5 hover:bg-accent/30 transition-all group cursor-pointer"
                         >
                           <div className="flex items-center gap-4">
@@ -389,6 +443,45 @@ const AgentDashboard = () => {
 
           {/* Activity Sidebar */}
           <div className="lg:col-span-1 space-y-6">
+            <Card className="border-muted shadow-sm">
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
+                  <Bell className="h-5 w-5 text-primary" />
+                  Action Items
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Quick actions that need your attention
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-5 space-y-3">
+                {actionItems.length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic text-center py-4">
+                    You're all caught up.
+                  </div>
+                ) : (
+                  actionItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-md border border-muted bg-background"
+                    >
+                      <div className="flex flex-col">
+                        <p className="text-xs font-bold">{item.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.description}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={item.inviteStatus === "pending" ? "outline" : "default"}
+                        className="h-7 text-[10px] font-bold"
+                        onClick={() => inviteClient(item.id)}
+                      >
+                        {item.actionLabel}
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
             <Card className="h-full border-muted shadow-sm">
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">

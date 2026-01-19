@@ -12,6 +12,7 @@ import ForgetPassword from "@/pages/auth/ForgetPassword";
 // Agent pages
 import AgentDashboard from "@/pages/agents/AgentDashboard";
 import TimelineBuilder from "@/pages/agents/TimelineBuilder";
+import ClientDetail from "@/pages/agents/ClientDetail";
 
 // Client invite landing
 import ClientSetPassword from "@/pages/clients/ClientSetPassword";
@@ -69,6 +70,14 @@ function App() {
           element={
             <ProtectedRoute allow={["agent"]}>
               <TimelineBuilder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/clients/:clientId"
+          element={
+            <ProtectedRoute allow={["agent"]}>
+              <ClientDetail />
             </ProtectedRoute>
           }
         />

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { ArrowLeft, Calendar, FileText, UserRound } from "lucide-react";
 
 interface ClientDetailData {
@@ -19,11 +21,38 @@ interface ClientDetailData {
   value?: number;
 }
 
+interface DealData {
+  id: string;
+  client_id: string;
+  agent_id: string;
+  property_type?: string;
+  transaction_type?: string;
+  status?: string;
+  value?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface DealNote {
+  id: string;
+  deal_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+}
+
 const ClientDetail = () => {
   const { clientId } = useParams();
   const navigate = useNavigate();
   const [client, setClient] = useState<ClientDetailData | null>(null);
+  const [deal, setDeal] = useState<DealData | null>(null);
+  const [notes, setNotes] = useState<DealNote[]>([]);
+  const [noteBody, setNoteBody] = useState("");
   const [loading, setLoading] = useState(true);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingBody, setEditingBody] = useState("");
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -33,6 +62,13 @@ const ClientDetail = () => {
         setClient(res.data || null);
       } catch {
         setClient(null);
+      }
+
+      try {
+        const dealRes = await api.get(`/deals/clients/${clientId}/deal`);
+        setDeal(dealRes.data || null);
+      } catch {
+        setDeal(null);
       } finally {
         setLoading(false);
       }
@@ -40,6 +76,85 @@ const ClientDetail = () => {
 
     if (clientId) fetchClient();
   }, [clientId]);
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (!deal?.id) {
+        setNotes([]);
+        return;
+      }
+      setNotesLoading(true);
+      try {
+        const res = await api.get(`/deals/${deal.id}/notes`);
+        setNotes(res.data || []);
+      } catch {
+        setNotes([]);
+      } finally {
+        setNotesLoading(false);
+      }
+    };
+
+    fetchNotes();
+  }, [deal?.id]);
+
+  const handleAddNote = async () => {
+    if (!clientId) return;
+    const trimmed = noteBody.trim();
+    if (!trimmed) return;
+    setSavingNote(true);
+    try {
+      let activeDeal = deal;
+      if (!activeDeal) {
+        const dealRes = await api.post(`/deals/clients/${clientId}/deal`, {});
+        activeDeal = dealRes.data;
+        setDeal(activeDeal);
+      }
+      await api.post(`/deals/${activeDeal.id}/notes`, { body: trimmed });
+      setNoteBody("");
+      const res = await api.get(`/deals/${activeDeal.id}/notes`);
+      setNotes(res.data || []);
+      toast.success("Note added.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to add note.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleEditNote = async (noteId: string) => {
+    if (!deal?.id) return;
+    const trimmed = editingBody.trim();
+    if (!trimmed) return;
+    setSavingNote(true);
+    try {
+      await api.patch(`/deals/${deal.id}/notes/${noteId}`, { body: trimmed });
+      const res = await api.get(`/deals/${deal.id}/notes`);
+      setNotes(res.data || []);
+      setEditingNoteId(null);
+      setEditingBody("");
+      toast.success("Note updated.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to update note.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!deal?.id) return;
+    if (!window.confirm("Delete this note?")) return;
+    setSavingNote(true);
+    try {
+      await api.delete(`/deals/${deal.id}/notes/${noteId}`);
+      const res = await api.get(`/deals/${deal.id}/notes`);
+      setNotes(res.data || []);
+      toast.success("Note deleted.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to delete note.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
   return (
     <div className="bg-background min-h-screen p-6">
@@ -131,8 +246,93 @@ const ClientDetail = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-muted-foreground italic">
-                  Notes area coming soon.
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Textarea
+                      value={noteBody}
+                      onChange={(e) => setNoteBody(e.target.value)}
+                      placeholder="Add a note about this deal..."
+                      className="text-xs"
+                      rows={4}
+                    />
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={handleAddNote} disabled={savingNote}>
+                        {savingNote ? "Saving..." : "Add Note"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {notesLoading ? (
+                    <div className="text-xs text-muted-foreground italic">Loading notes...</div>
+                  ) : notes.length === 0 ? (
+                    <div className="text-xs text-muted-foreground italic">
+                      No notes yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notes.map((note) => (
+                        <div key={note.id} className="p-3 rounded-md border border-muted bg-background">
+                          {editingNoteId === note.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={editingBody}
+                                onChange={(e) => setEditingBody(e.target.value)}
+                                className="text-xs"
+                                rows={3}
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingNoteId(null);
+                                    setEditingBody("");
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleEditNote(note.id)}
+                                  disabled={savingNote}
+                                >
+                                  {savingNote ? "Saving..." : "Save"}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-xs leading-relaxed">{note.body}</p>
+                              <div className="mt-2 flex items-center justify-between gap-3">
+                                <p className="text-[10px] text-muted-foreground">
+                                  {new Date(note.created_at).toLocaleString()}
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingNoteId(note.id);
+                                      setEditingBody(note.body);
+                                    }}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteNote(note.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

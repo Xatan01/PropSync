@@ -398,13 +398,13 @@ const AgentDashboard = () => {
                 <CardDescription className="text-xs">Updates & notifications</CardDescription>
               </CardHeader>
 
-              <CardContent className="pt-6">
+              <CardContent className="pt-6 max-h-[520px] overflow-y-auto">
                 {activities.length === 0 ? (
                   <div className="py-8 text-center italic text-muted-foreground text-xs">
                     No activity yet.
                   </div>
                 ) : (
-                  <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
+                  <div className="relative space-y-6 pr-2 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
                     {activities.map((a) => (
                       <div key={a.id} className="relative flex items-start gap-4 pl-10 group">
                         <div className="absolute left-0 grid place-items-center w-10 h-10 rounded-full bg-background border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">

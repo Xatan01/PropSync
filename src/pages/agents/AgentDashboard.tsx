@@ -274,7 +274,7 @@ const AgentDashboard = () => {
                       return (
                         <div
                           key={client.id}
-                          onClick={() => navigate(`/timeline/${client.id}`)}
+                          onClick={() => navigate(`/clients/${client.id}`)}
                           className="flex justify-between items-center p-5 hover:bg-accent/30 transition-all group cursor-pointer"
                         >
                           <div className="flex items-center gap-4">

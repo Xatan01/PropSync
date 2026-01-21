@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/utils/api";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,7 @@ interface ClientDocument {
   notes?: string;
   created_at?: string;
   request_id?: string;
+  uploader_role?: string;
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
@@ -113,7 +114,11 @@ const ClientDetail = () => {
   const [creatingRequest, setCreatingRequest] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState("");
   const [reviewingDocId, setReviewingDocId] = useState<string | null>(null);
+  const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -264,38 +269,69 @@ const ClientDetail = () => {
     }
   };
 
-  const handleCreateRequest = async () => {
+  const handleCreateOrUpdateRequest = async () => {
     if (!clientId || !requestTitle.trim()) return;
     setCreatingRequest(true);
     try {
-      await api.post(`/documents/clients/${clientId}/requests`, {
-        title: requestTitle.trim(),
-        description: requestDescription.trim() || null,
-        required: requestRequired,
-        due_date: requestDueDate || null,
-      });
+      let requestId = editingRequestId;
+      if (editingRequestId) {
+        const res = await api.patch(`/documents/requests/${editingRequestId}`, {
+          title: requestTitle.trim(),
+          description: requestDescription.trim() || null,
+          required: requestRequired,
+          due_date: requestDueDate || null,
+        });
+        requestId = res.data?.id || editingRequestId;
+      } else {
+        const res = await api.post(`/documents/clients/${clientId}/requests`, {
+          title: requestTitle.trim(),
+          description: requestDescription.trim() || null,
+          required: requestRequired,
+          due_date: requestDueDate || null,
+        });
+        requestId = res.data?.id;
+      }
+
       setRequestTitle("");
       setRequestDescription("");
       setRequestDueDate("");
       setRequestRequired(true);
-      await fetchDocuments();
-      toast.success("Document request created.");
+      setEditingRequestId(null);
+      if (requestId) {
+        setSelectedRequestId(requestId);
+      }
+      if (requestId && selectedFile) {
+        await handleUploadDocument(selectedFile, requestId);
+      } else {
+        await fetchDocuments();
+      }
+      if (selectedFile) {
+        setSelectedFile(null);
+        setSelectedFileName("");
+        if (uploadInputRef.current) {
+          uploadInputRef.current.value = "";
+        }
+      }
+      toast.success(editingRequestId ? "Request updated." : "Document request created.");
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || "Failed to create request.");
+      toast.error(err?.response?.data?.detail || "Failed to save request.");
     } finally {
       setCreatingRequest(false);
     }
   };
 
-  const handleUploadDocument = async (file: File) => {
+  const handleUploadDocument = async (file: File, requestIdOverride?: string | null) => {
     if (!clientId || !file) return;
     setUploadingDoc(true);
+    setSelectedFileName(file.name);
+    const requestId = requestIdOverride ?? selectedRequestId ?? null;
+    const normalizedRequestId = requestId && requestId.length > 0 ? requestId : null;
     try {
       const uploadRes = await api.post(`/documents/clients/${clientId}/upload-url`, {
         file_name: file.name,
         mime_type: file.type,
         file_size: file.size,
-        request_id: selectedRequestId || null,
+        request_id: normalizedRequestId,
       });
 
       const signedUrl = uploadRes.data?.signed_url;
@@ -321,10 +357,15 @@ const ClientDetail = () => {
         file_name: file.name,
         mime_type: file.type,
         file_size: file.size,
-        request_id: selectedRequestId || null,
+        request_id: normalizedRequestId,
       });
 
       await fetchDocuments();
+      setSelectedFile(null);
+      setSelectedFileName("");
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = "";
+      }
       toast.success("Document uploaded.");
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || err?.message || "Failed to upload document.");
@@ -344,6 +385,55 @@ const ClientDetail = () => {
       toast.error(err?.response?.data?.detail || "Failed to update document.");
     } finally {
       setReviewingDocId(null);
+    }
+  };
+
+  const handleEditRequest = (req: DocumentRequest) => {
+    setEditingRequestId(req.id);
+    setRequestTitle(req.title);
+    setRequestDescription(req.description || "");
+    setRequestRequired(Boolean(req.required));
+    setRequestDueDate(req.due_date ? req.due_date.slice(0, 10) : "");
+    setSelectedRequestId(req.id);
+    setSelectedFile(null);
+    setSelectedFileName("");
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteRequest = async (requestId: string) => {
+    if (!window.confirm("Delete this request?")) return;
+    try {
+      await api.delete(`/documents/requests/${requestId}`);
+      await fetchDocuments();
+      if (editingRequestId === requestId) {
+        setEditingRequestId(null);
+        setRequestTitle("");
+        setRequestDescription("");
+        setRequestDueDate("");
+        setRequestRequired(true);
+        setSelectedRequestId("");
+        setSelectedFile(null);
+        setSelectedFileName("");
+        if (uploadInputRef.current) {
+          uploadInputRef.current.value = "";
+        }
+      }
+      toast.success("Request deleted.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to delete request.");
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!window.confirm("Delete this file?")) return;
+    try {
+      await api.delete(`/documents/${docId}`);
+      await fetchDocuments();
+      toast.success("Document deleted.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to delete document.");
     }
   };
   const handleInvite = async () => {
@@ -669,7 +759,7 @@ const ClientDetail = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-3">
                       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        New Request
+                        {editingRequestId ? "Edit Request" : "New Request"}
                       </p>
                       <Input
                         value={requestTitle}
@@ -699,14 +789,45 @@ const ClientDetail = () => {
                           Required
                         </label>
                       </div>
-                      <Button size="sm" onClick={handleCreateRequest} disabled={creatingRequest}>
-                        {creatingRequest ? "Creating..." : "Create Request"}
+                      {editingRequestId &&
+                        documents.some((doc) => doc.request_id === editingRequestId && doc.uploader_role === "agent") && (
+                          <div className="text-xs text-muted-foreground">
+                            Attached:{" "}
+                            {documents
+                              .filter((doc) => doc.request_id === editingRequestId && doc.uploader_role === "agent")
+                              .map((doc) => doc.file_name)
+                              .join(", ")}
+                          </div>
+                        )}
+                      <Button size="sm" onClick={handleCreateOrUpdateRequest} disabled={creatingRequest}>
+                        {creatingRequest ? "Saving..." : editingRequestId ? "Save Request" : "Create Request"}
                       </Button>
+                      {editingRequestId && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingRequestId(null);
+                            setRequestTitle("");
+                            setRequestDescription("");
+                            setRequestDueDate("");
+                            setRequestRequired(true);
+                            setSelectedRequestId("");
+                            setSelectedFile(null);
+                            setSelectedFileName("");
+                            if (uploadInputRef.current) {
+                              uploadInputRef.current.value = "";
+                            }
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      )}
                     </div>
 
                     <div className="space-y-3">
                       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        Upload Document
+                        Upload Agent File
                       </p>
                       <select
                         value={selectedRequestId}
@@ -721,18 +842,41 @@ const ClientDetail = () => {
                         ))}
                       </select>
                       <input
+                        ref={uploadInputRef}
                         type="file"
                         className="text-xs"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleUploadDocument(file);
-                          e.currentTarget.value = "";
+                          if (file) {
+                            setSelectedFile(file);
+                            setSelectedFileName(file.name);
+                          } else {
+                            setSelectedFile(null);
+                            setSelectedFileName("");
+                          }
                         }}
                         disabled={uploadingDoc}
                       />
+                      {selectedFileName && (
+                        <div className="text-xs text-muted-foreground">
+                          Selected: {selectedFileName}
+                        </div>
+                      )}
                       {uploadingDoc && (
                         <div className="text-xs text-muted-foreground italic">Uploading...</div>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={uploadingDoc || !selectedFile}
+                        onClick={() => {
+                          if (selectedFile) {
+                            handleUploadDocument(selectedFile, selectedRequestId || null);
+                          }
+                        }}
+                      >
+                        {uploadingDoc ? "Uploading..." : "Upload File"}
+                      </Button>
                     </div>
                   </div>
 
@@ -760,6 +904,47 @@ const ClientDetail = () => {
                                 Due {req.due_date}
                               </p>
                             )}
+                            {documents.some((doc) => doc.request_id === req.id && doc.uploader_role === "agent") && (
+                              <div className="mt-2 space-y-1">
+                                <p className="text-[10px] uppercase text-muted-foreground font-bold">
+                                  Attached Files
+                                </p>
+                                {documents
+                                  .filter((doc) => doc.request_id === req.id && doc.uploader_role === "agent")
+                                  .map((doc) => (
+                                    <div key={doc.id} className="flex items-center justify-between text-xs">
+                                      <span>{doc.file_name}</span>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 text-[10px]"
+                                        onClick={() => handleDeleteDocument(doc.id)}
+                                      >
+                                        Delete
+                                      </Button>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                            <div className="mt-3 flex items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>
+                                Edit
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeleteRequest(req.id)}>
+                                Delete
+                              </Button>
+                              {!documents.some((doc) => doc.request_id === req.id && doc.uploader_role === "agent") && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setSelectedRequestId(req.id);
+                                  }}
+                                >
+                                  Attach File
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -770,27 +955,36 @@ const ClientDetail = () => {
                     <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                       Uploaded Documents
                     </p>
-                    {documents.length === 0 ? (
+                    {documents.filter((doc) => doc.uploader_role === "client").length === 0 ? (
                       <div className="text-xs text-muted-foreground italic">No documents uploaded yet.</div>
                     ) : (
                       <div className="space-y-2">
-                        {documents.map((doc) => (
+                        {documents
+                          .filter((doc) => doc.uploader_role === "client")
+                          .map((doc) => (
                           <div key={doc.id} className="rounded-md border border-muted p-3">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-semibold">{doc.file_name}</p>
-                              <Badge variant="outline" className="text-[10px] uppercase">
-                                {doc.status}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                {doc.uploader_role && (
+                                  <Badge variant="secondary" className="text-[9px] uppercase">
+                                    {doc.uploader_role}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className="text-[10px] uppercase">
+                                  {doc.status}
+                                </Badge>
+                              </div>
                             </div>
                             {doc.notes && (
                               <p className="text-xs text-muted-foreground mt-1">Notes: {doc.notes}</p>
                             )}
                             <div className="mt-2 flex items-center gap-2">
-                              {doc.status === "submitted" && (
+                              {doc.status === "submitted" && doc.uploader_role === "client" && (
                                 <>
                                   <Button
                                     size="sm"
-                                    variant="outline"
+                                    className="bg-emerald-600 text-white hover:bg-emerald-700"
                                     disabled={reviewingDocId === doc.id}
                                     onClick={() => handleReviewDocument(doc.id, "approved")}
                                   >
@@ -798,7 +992,7 @@ const ClientDetail = () => {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant="ghost"
+                                    className="bg-red-600 text-white hover:bg-red-700"
                                     disabled={reviewingDocId === doc.id}
                                     onClick={() => handleReviewDocument(doc.id, "rejected")}
                                   >

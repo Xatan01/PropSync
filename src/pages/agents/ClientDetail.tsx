@@ -865,18 +865,6 @@ const ClientDetail = () => {
                       {uploadingDoc && (
                         <div className="text-xs text-muted-foreground italic">Uploading...</div>
                       )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={uploadingDoc || !selectedFile}
-                        onClick={() => {
-                          if (selectedFile) {
-                            handleUploadDocument(selectedFile, selectedRequestId || null);
-                          }
-                        }}
-                      >
-                        {uploadingDoc ? "Uploading..." : "Upload File"}
-                      </Button>
                     </div>
                   </div>
 

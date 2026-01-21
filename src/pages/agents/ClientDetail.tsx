@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, FileText, UserRound } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, Send, UserPlus, UserRound } from "lucide-react";
 
 interface ClientDetailData {
   id: string;
@@ -41,6 +41,34 @@ interface DealNote {
   created_at: string;
 }
 
+const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
+  pending: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
+  in_progress: { label: "In Progress", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", dot: "bg-blue-500" },
+  on_hold: { label: "On Hold", color: "text-slate-600", bg: "bg-slate-100 border-slate-200", dot: "bg-slate-400" },
+  completed: { label: "Completed", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
+};
+
+const inviteConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+  uninvited: {
+    label: "Not Invited",
+    color: "text-slate-600",
+    bg: "bg-slate-100 border-slate-200",
+    icon: UserPlus,
+  },
+  pending: {
+    label: "Invited",
+    color: "text-amber-700",
+    bg: "bg-amber-50 border-amber-200",
+    icon: Send,
+  },
+  confirmed: {
+    label: "Joined Portal",
+    color: "text-emerald-700",
+    bg: "bg-emerald-50 border-emerald-200",
+    icon: CheckCircle2,
+  },
+};
+
 const ClientDetail = () => {
   const { clientId } = useParams();
   const navigate = useNavigate();
@@ -53,6 +81,8 @@ const ClientDetail = () => {
   const [savingNote, setSavingNote] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingBody, setEditingBody] = useState("");
+  const [dealStatus, setDealStatus] = useState<string>("pending");
+  const [savingDeal, setSavingDeal] = useState(false);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -67,8 +97,10 @@ const ClientDetail = () => {
       try {
         const dealRes = await api.get(`/deals/clients/${clientId}/deal`);
         setDeal(dealRes.data || null);
+        setDealStatus((dealRes.data?.status as string) || "pending");
       } catch {
         setDeal(null);
+        setDealStatus("pending");
       } finally {
         setLoading(false);
       }
@@ -121,6 +153,32 @@ const ClientDetail = () => {
     }
   };
 
+  const handleDealStatusUpdate = async (newStatus: string) => {
+    if (!clientId) return;
+    setSavingDeal(true);
+    try {
+      let activeDeal = deal;
+      if (!activeDeal) {
+        const dealRes = await api.post(`/deals/clients/${clientId}/deal`, {
+          status: newStatus,
+        });
+        activeDeal = dealRes.data;
+        setDeal(activeDeal);
+      } else {
+        const dealRes = await api.patch(`/deals/${activeDeal.id}`, {
+          status: newStatus,
+        });
+        setDeal(dealRes.data);
+      }
+      toast.success("Stage updated successfully.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to update status.");
+      setDealStatus(deal?.status || "pending");
+    } finally {
+      setSavingDeal(false);
+    }
+  };
+
   const handleEditNote = async (noteId: string) => {
     if (!deal?.id) return;
     const trimmed = editingBody.trim();
@@ -156,6 +214,29 @@ const ClientDetail = () => {
     }
   };
 
+  const handleInvite = async () => {
+    if (!client?.id) return;
+    try {
+      const res = await api.post(`/clients/invite/${client.id}`);
+      const status = res?.data?.status;
+      if (status === "invited" || status === "sent") {
+        toast.success("Invite email sent.");
+      } else if (status === "already_invited") {
+        toast.message("Invite already pending - resent.");
+      } else if (status === "already_registered") {
+        toast.message("Email already registered. Ask the client to log in or reset their password.");
+      } else if (status === "already_confirmed") {
+        toast.message("Client already confirmed and can log in.");
+      } else {
+        toast.success("Invite updated.");
+      }
+      const refreshed = await api.get(`/clients/${client.id}`);
+      setClient(refreshed.data || null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to send invite.");
+    }
+  };
+
   return (
     <div className="bg-background min-h-screen p-6">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -180,62 +261,148 @@ const ClientDetail = () => {
             <CardTitle className="text-lg">Client Snapshot</CardTitle>
             <CardDescription>Core details and deal status</CardDescription>
           </CardHeader>
-          <CardContent className="pt-5">
+          <CardContent className="pt-6 space-y-8">
             {loading ? (
               <div className="text-sm text-muted-foreground italic">Loading client...</div>
             ) : !client ? (
               <div className="text-sm text-muted-foreground italic">Client not found.</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <UserRound className="h-4 w-4 text-primary" />
-                    Contact
+              <>
+                <div className="relative flex w-full items-center justify-between px-2">
+                  <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2 -z-0" />
+                  {Object.entries(statusConfig).map(([key, cfg], index) => {
+                    const currentIndex = Object.keys(statusConfig).indexOf(dealStatus);
+                    const isActive = dealStatus === key;
+                    const isPast = currentIndex >= index;
+
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setDealStatus(key);
+                          handleDealStatusUpdate(key);
+                        }}
+                        className="relative z-10 flex flex-col items-center group transition-all"
+                        type="button"
+                      >
+                        <div
+                          className={`h-8 w-8 rounded-full border-4 flex items-center justify-center transition-all ${
+                            isActive
+                              ? "bg-primary border-background scale-125 shadow-lg"
+                              : isPast
+                              ? "bg-emerald-500 border-background"
+                              : "bg-muted border-background"
+                          }`}
+                        >
+                          {isPast && !isActive ? (
+                            <CheckCircle2 className="h-4 w-4 text-white" />
+                          ) : (
+                            <div className={`h-2 w-2 rounded-full ${isActive ? "bg-white" : "bg-muted-foreground"}`} />
+                          )}
+                        </div>
+                        <span
+                          className={`mt-2 text-[11px] font-bold uppercase tracking-tighter ${
+                            isActive ? "text-primary" : "text-muted-foreground"
+                          }`}
+                        >
+                          {cfg.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4 border-t border-muted/50">
+                  <div className="flex gap-4">
+                    <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                      <UserRound className="h-6 w-6 text-slate-600" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold leading-none">{client.name}</p>
+                      <p className="text-xs text-muted-foreground">{client.email || "No email"}</p>
+                      <p className="text-xs text-muted-foreground">{client.phone || "No phone"}</p>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {client.email || "No email"}
+
+                  <div className="flex gap-4">
+                    <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100">
+                      <Calendar className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
+                          Property Assignment
+                        </span>
+                        <div>
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] h-5 px-2 uppercase tracking-tight border-blue-200 bg-blue-50/60 text-blue-700 font-bold"
+                          >
+                            {client.transaction_type || "Standard"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground leading-snug">
+                        {client.property || "No Listing Attached"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {client.phone || "No phone"}
+
+                  <div className="flex flex-col justify-center gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                        Portal Access
+                      </span>
+                      {savingDeal && (
+                        <span className="text-[10px] text-primary animate-pulse font-bold">
+                          SAVING...
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {(() => {
+                        const status = client.invite_status || "uninvited";
+                        const config = inviteConfig[status] || inviteConfig.uninvited;
+                        const Icon = config.icon;
+                        return (
+                          <div
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border shadow-sm transition-all ${config.bg} ${config.color}`}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span className="text-xs font-bold">{config.label}</span>
+                          </div>
+                        );
+                      })()}
+                      {client.invite_status === "uninvited" && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs font-bold text-primary underline"
+                          onClick={handleInvite}
+                        >
+                          Send Invite
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <Calendar className="h-4 w-4 text-primary" />
-                    Deal
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Property: {client.property || "Unassigned"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Transaction: {client.transaction_type || "Standard"}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <FileText className="h-4 w-4 text-primary" />
-                    Status
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-widest">
-                      {client.status || "pending"}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px] uppercase tracking-widest">
-                      {client.invite_status || "uninvited"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
+              </>
             )}
           </CardContent>
         </Card>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-          </TabsList>
+        <TabsList className="grid grid-cols-3 w-full max-w-md mx-auto h-12 bg-muted/50 p-1 border border-muted">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            Timeline
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            Documents
+          </TabsTrigger>
+        </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
             <Card className="border-muted shadow-sm">

@@ -63,6 +63,15 @@ interface Activity {
   created_at: string;
 }
 
+interface ActionItem {
+  id: string;
+  client_id: string;
+  type: string;
+  title: string;
+  description: string;
+  due_date?: string;
+}
+
 type InviteVariant = "default" | "outline" | "secondary";
 
 const getInviteUI = (status?: string): { label: string; disabled: boolean; variant: InviteVariant } => {
@@ -77,16 +86,18 @@ const AgentDashboard = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [sortBy, setSortBy] = useState<string>("value");
   const [loading, setLoading] = useState<boolean>(true);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [clientRes, tempRes, actRes] = await Promise.all([
+      const [clientRes, tempRes, actRes, actionRes] = await Promise.all([
         api.get("/clients"),
         api.get("/timeline/templates"),
         api.get("/clients/activity"),
+        api.get("/actions/center?limit=5"),
       ]);
       const normalizedClients = (clientRes.data || []).map((client: any) => ({
         ...client,
@@ -96,6 +107,7 @@ const AgentDashboard = () => {
       setClients(normalizedClients);
       setTemplates(tempRes.data || []);
       setActivities(actRes.data || []);
+      setActionItems(actionRes.data || []);
     } catch (err) {
       toast.error("Failed to sync dashboard data");
     } finally {
@@ -141,39 +153,30 @@ const AgentDashboard = () => {
 
   const activeCount = clients.filter((c) => c.status === "active").length;
   const totalValue = clients.reduce((sum, c) => sum + (c.value || 0), 0);
-  const actionItems = clients.flatMap((client) => {
-    const items: { id: string; title: string; description: string; cta?: string; action?: () => void }[] = [];
+  const getActionCta = (item: ActionItem) => {
+    if (item.type === "invite") return "Send Invite";
+    if (item.type === "invite_pending") return "Resend";
+    if (item.type === "deal_details") return "Update";
+    if (item.type === "timeline_missing") return "Create";
+    if (item.type === "timeline_overdue" || item.type === "timeline_upcoming") return "View";
+    return "Open";
+  };
 
-    if (client.invite_status === "uninvited") {
-      items.push({
-        id: `invite-${client.id}`,
-        title: "Invite client",
-        description: `${client.name} hasn't been invited yet.`,
-        cta: "Send Invite",
-        action: () => inviteClient(client.id, { stopPropagation: () => {} } as React.MouseEvent),
-      });
-    } else if (client.invite_status === "pending") {
-      items.push({
-        id: `resend-${client.id}`,
-        title: "Invite pending",
-        description: `Resend invite to ${client.name}.`,
-        cta: "Resend",
-        action: () => inviteClient(client.id, { stopPropagation: () => {} } as React.MouseEvent),
-      });
+  const handleAction = (item: ActionItem) => {
+    if (item.type === "invite" || item.type === "invite_pending") {
+      inviteClient(item.client_id, { stopPropagation: () => {} } as React.MouseEvent);
+      return;
     }
-
-    if (!client.property || !client.transactionType) {
-      items.push({
-        id: `details-${client.id}`,
-        title: "Complete deal details",
-        description: `Add property or transaction type for ${client.name}.`,
-        cta: "Update",
-        action: () => navigate(`/clients/${client.id}`),
-      });
+    if (item.type === "deal_details") {
+      navigate(`/clients/${item.client_id}`);
+      return;
     }
-
-    return items;
-  }).slice(0, 5);
+    if (item.type === "timeline_missing" || item.type === "timeline_overdue" || item.type === "timeline_upcoming") {
+      navigate(`/timeline/${item.client_id}`);
+      return;
+    }
+    navigate(`/clients/${item.client_id}`);
+  };
 
   return (
     <div className="bg-background min-h-screen p-6">
@@ -446,11 +449,14 @@ const AgentDashboard = () => {
                         <p className="text-sm font-semibold">{item.title}</p>
                         <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                       </div>
-                      {item.cta && (
-                        <Button size="sm" variant="outline" className="text-[11px] font-bold h-8" onClick={item.action}>
-                          {item.cta}
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-[11px] font-bold h-8"
+                        onClick={() => handleAction(item)}
+                      >
+                        {getActionCta(item)}
+                      </Button>
                     </div>
                   ))
                 )}

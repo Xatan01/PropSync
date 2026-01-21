@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ArrowLeft, Calendar, CheckCircle2, FileText, Send, UserPlus, UserRound } from "lucide-react";
 
@@ -39,6 +41,25 @@ interface DealNote {
   author_id: string;
   body: string;
   created_at: string;
+}
+
+interface DocumentRequest {
+  id: string;
+  title: string;
+  description?: string;
+  required: boolean;
+  due_date?: string;
+  status: string;
+  created_at?: string;
+}
+
+interface ClientDocument {
+  id: string;
+  file_name: string;
+  status: string;
+  notes?: string;
+  created_at?: string;
+  request_id?: string;
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
@@ -83,6 +104,16 @@ const ClientDetail = () => {
   const [editingBody, setEditingBody] = useState("");
   const [dealStatus, setDealStatus] = useState<string>("pending");
   const [savingDeal, setSavingDeal] = useState(false);
+  const [docRequests, setDocRequests] = useState<DocumentRequest[]>([]);
+  const [documents, setDocuments] = useState<ClientDocument[]>([]);
+  const [requestTitle, setRequestTitle] = useState("");
+  const [requestDescription, setRequestDescription] = useState("");
+  const [requestRequired, setRequestRequired] = useState(true);
+  const [requestDueDate, setRequestDueDate] = useState("");
+  const [creatingRequest, setCreatingRequest] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState("");
+  const [reviewingDocId, setReviewingDocId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -128,6 +159,25 @@ const ClientDetail = () => {
 
     fetchNotes();
   }, [deal?.id]);
+
+  const fetchDocuments = async () => {
+    if (!clientId) return;
+    try {
+      const [reqRes, docRes] = await Promise.all([
+        api.get(`/documents/clients/${clientId}/requests`),
+        api.get(`/documents/clients/${clientId}/documents`),
+      ]);
+      setDocRequests(reqRes.data || []);
+      setDocuments(docRes.data || []);
+    } catch {
+      setDocRequests([]);
+      setDocuments([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [clientId]);
 
   const handleAddNote = async () => {
     if (!clientId) return;
@@ -214,6 +264,88 @@ const ClientDetail = () => {
     }
   };
 
+  const handleCreateRequest = async () => {
+    if (!clientId || !requestTitle.trim()) return;
+    setCreatingRequest(true);
+    try {
+      await api.post(`/documents/clients/${clientId}/requests`, {
+        title: requestTitle.trim(),
+        description: requestDescription.trim() || null,
+        required: requestRequired,
+        due_date: requestDueDate || null,
+      });
+      setRequestTitle("");
+      setRequestDescription("");
+      setRequestDueDate("");
+      setRequestRequired(true);
+      await fetchDocuments();
+      toast.success("Document request created.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to create request.");
+    } finally {
+      setCreatingRequest(false);
+    }
+  };
+
+  const handleUploadDocument = async (file: File) => {
+    if (!clientId || !file) return;
+    setUploadingDoc(true);
+    try {
+      const uploadRes = await api.post(`/documents/clients/${clientId}/upload-url`, {
+        file_name: file.name,
+        mime_type: file.type,
+        file_size: file.size,
+        request_id: selectedRequestId || null,
+      });
+
+      const signedUrl = uploadRes.data?.signed_url;
+      const storagePath = uploadRes.data?.storage_path;
+      if (!signedUrl || !storagePath) {
+        throw new Error("Missing upload URL");
+      }
+
+      const uploadResp = await fetch(signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      });
+
+      if (!uploadResp.ok) {
+        throw new Error("Upload failed");
+      }
+
+      await api.post(`/documents/clients/${clientId}/documents/confirm`, {
+        storage_path: storagePath,
+        file_name: file.name,
+        mime_type: file.type,
+        file_size: file.size,
+        request_id: selectedRequestId || null,
+      });
+
+      await fetchDocuments();
+      toast.success("Document uploaded.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || err?.message || "Failed to upload document.");
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleReviewDocument = async (docId: string, status: "approved" | "rejected") => {
+    setReviewingDocId(docId);
+    try {
+      const notes = status === "rejected" ? window.prompt("Rejection notes (optional):") || "" : "";
+      await api.patch(`/documents/${docId}/review`, { status, notes });
+      await fetchDocuments();
+      toast.success(`Document ${status}.`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to update document.");
+    } finally {
+      setReviewingDocId(null);
+    }
+  };
   const handleInvite = async () => {
     if (!client?.id) return;
     try {
@@ -533,8 +665,153 @@ const ClientDetail = () => {
                 <CardDescription>Request and review client uploads.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-muted-foreground italic">
-                  Document requests and approvals will appear here.
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        New Request
+                      </p>
+                      <Input
+                        value={requestTitle}
+                        onChange={(e) => setRequestTitle(e.target.value)}
+                        placeholder="Document title (e.g. ID, Option to Purchase)"
+                        className="text-xs"
+                      />
+                      <Textarea
+                        value={requestDescription}
+                        onChange={(e) => setRequestDescription(e.target.value)}
+                        placeholder="Request details or instructions"
+                        className="text-xs"
+                        rows={3}
+                      />
+                      <div className="flex items-center gap-3">
+                        <Input
+                          type="date"
+                          value={requestDueDate}
+                          onChange={(e) => setRequestDueDate(e.target.value)}
+                          className="text-xs"
+                        />
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Checkbox
+                            checked={requestRequired}
+                            onCheckedChange={(val) => setRequestRequired(Boolean(val))}
+                          />
+                          Required
+                        </label>
+                      </div>
+                      <Button size="sm" onClick={handleCreateRequest} disabled={creatingRequest}>
+                        {creatingRequest ? "Creating..." : "Create Request"}
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Upload Document
+                      </p>
+                      <select
+                        value={selectedRequestId}
+                        onChange={(e) => setSelectedRequestId(e.target.value)}
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs"
+                      >
+                        <option value="">Link to request (optional)</option>
+                        {docRequests.map((req) => (
+                          <option key={req.id} value={req.id}>
+                            {req.title}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="file"
+                        className="text-xs"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadDocument(file);
+                          e.currentTarget.value = "";
+                        }}
+                        disabled={uploadingDoc}
+                      />
+                      {uploadingDoc && (
+                        <div className="text-xs text-muted-foreground italic">Uploading...</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Requested Documents
+                    </p>
+                    {docRequests.length === 0 ? (
+                      <div className="text-xs text-muted-foreground italic">No requests yet.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {docRequests.map((req) => (
+                          <div key={req.id} className="rounded-md border border-muted p-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold">{req.title}</p>
+                              <Badge variant="outline" className="text-[10px] uppercase">
+                                {req.status}
+                              </Badge>
+                            </div>
+                            {req.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{req.description}</p>
+                            )}
+                            {req.due_date && (
+                              <p className="text-[10px] text-muted-foreground mt-2">
+                                Due {req.due_date}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Uploaded Documents
+                    </p>
+                    {documents.length === 0 ? (
+                      <div className="text-xs text-muted-foreground italic">No documents uploaded yet.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {documents.map((doc) => (
+                          <div key={doc.id} className="rounded-md border border-muted p-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold">{doc.file_name}</p>
+                              <Badge variant="outline" className="text-[10px] uppercase">
+                                {doc.status}
+                              </Badge>
+                            </div>
+                            {doc.notes && (
+                              <p className="text-xs text-muted-foreground mt-1">Notes: {doc.notes}</p>
+                            )}
+                            <div className="mt-2 flex items-center gap-2">
+                              {doc.status === "submitted" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={reviewingDocId === doc.id}
+                                    onClick={() => handleReviewDocument(doc.id, "approved")}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={reviewingDocId === doc.id}
+                                    onClick={() => handleReviewDocument(doc.id, "rejected")}
+                                  >
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

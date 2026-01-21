@@ -25,6 +25,7 @@ import {
   Plus,
   BookOpen,
   Pencil,
+  Bell,
 } from "lucide-react";
 import {
   Select,
@@ -140,6 +141,39 @@ const AgentDashboard = () => {
 
   const activeCount = clients.filter((c) => c.status === "active").length;
   const totalValue = clients.reduce((sum, c) => sum + (c.value || 0), 0);
+  const actionItems = clients.flatMap((client) => {
+    const items: { id: string; title: string; description: string; cta?: string; action?: () => void }[] = [];
+
+    if (client.invite_status === "uninvited") {
+      items.push({
+        id: `invite-${client.id}`,
+        title: "Invite client",
+        description: `${client.name} hasn't been invited yet.`,
+        cta: "Send Invite",
+        action: () => inviteClient(client.id, { stopPropagation: () => {} } as React.MouseEvent),
+      });
+    } else if (client.invite_status === "pending") {
+      items.push({
+        id: `resend-${client.id}`,
+        title: "Invite pending",
+        description: `Resend invite to ${client.name}.`,
+        cta: "Resend",
+        action: () => inviteClient(client.id, { stopPropagation: () => {} } as React.MouseEvent),
+      });
+    }
+
+    if (!client.property || !client.transactionType) {
+      items.push({
+        id: `details-${client.id}`,
+        title: "Complete deal details",
+        description: `Add property or transaction type for ${client.name}.`,
+        cta: "Update",
+        action: () => navigate(`/clients/${client.id}`),
+      });
+    }
+
+    return items;
+  }).slice(0, 5);
 
   return (
     <div className="bg-background min-h-screen p-6">
@@ -263,11 +297,14 @@ const AgentDashboard = () => {
                     Syncing clients...
                   </div>
                 ) : sortedClients.length === 0 ? (
-                  <div className="py-10 text-center italic text-muted-foreground text-sm border-b border-dashed">
-                    No clients found. Add your first client to begin.
+                  <div className="py-10 text-center text-muted-foreground text-sm border-b border-dashed space-y-3">
+                    <p className="italic">No clients found. Add your first client to begin.</p>
+                    <div className="flex justify-center">
+                      <AddClientModal onClientAdded={fetchData} />
+                    </div>
                   </div>
                 ) : (
-                  <div className="divide-y divide-muted">
+                  <div className="max-h-[420px] overflow-y-auto divide-y divide-muted">
                     {sortedClients.map((client) => {
                       const ui = getInviteUI(client.invite_status);
 
@@ -389,7 +426,38 @@ const AgentDashboard = () => {
 
           {/* Activity Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            <Card className="h-full border-muted shadow-sm">
+            <Card className="border-muted shadow-sm">
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
+                  <Bell className="h-5 w-5 text-primary" />
+                  Action Center
+                </CardTitle>
+                <CardDescription className="text-xs">Priority tasks to keep deals moving</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-5 space-y-3">
+                {actionItems.length === 0 ? (
+                  <div className="py-6 text-center italic text-muted-foreground text-xs">
+                    All caught up. No urgent actions.
+                  </div>
+                ) : (
+                  actionItems.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between gap-3 rounded-lg border border-muted/60 bg-background p-3">
+                      <div>
+                        <p className="text-sm font-semibold">{item.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                      </div>
+                      {item.cta && (
+                        <Button size="sm" variant="outline" className="text-[11px] font-bold h-8" onClick={item.action}>
+                          {item.cta}
+                        </Button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-muted shadow-sm">
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
                   <Calendar className="h-5 w-5 text-primary" />
@@ -398,13 +466,13 @@ const AgentDashboard = () => {
                 <CardDescription className="text-xs">Updates & notifications</CardDescription>
               </CardHeader>
 
-              <CardContent className="pt-6 pb-2 max-h-[520px] overflow-y-auto">
+              <CardContent className="p-0 pt-6 px-4 max-h-[520px] overflow-y-auto">
                 {activities.length === 0 ? (
                   <div className="py-8 text-center italic text-muted-foreground text-xs">
                     No activity yet.
                   </div>
                 ) : (
-                  <div className="relative space-y-6 pr-2 pb-2 before:absolute before:top-2 before:bottom-2 before:ml-5 before:-translate-x-px before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
+                  <div className="relative space-y-6 pr-2 before:absolute before:top-2 before:bottom-0 before:ml-5 before:-translate-x-px before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:to-transparent">
                     {activities.map((a) => (
                       <div key={a.id} className="relative flex items-start gap-4 pl-10 group">
                         <div className="absolute left-0 grid place-items-center w-10 h-10 rounded-full bg-background border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">

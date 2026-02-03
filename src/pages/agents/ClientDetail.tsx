@@ -436,6 +436,20 @@ const ClientDetail = () => {
       toast.error(err?.response?.data?.detail || "Failed to delete document.");
     }
   };
+
+  const handleOpenDocument = async (docId: string) => {
+    try {
+      const res = await api.get(`/documents/${docId}/download`);
+      const url = res.data?.signed_url;
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error("No download URL returned.");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to open document.");
+    }
+  };
   const handleInvite = async () => {
     if (!client?.id) return;
     try {
@@ -968,6 +982,15 @@ const ClientDetail = () => {
                               <p className="text-xs text-muted-foreground mt-1">Notes: {doc.notes}</p>
                             )}
                             <div className="mt-2 flex items-center gap-2">
+                              {doc.uploader_role === "client" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleOpenDocument(doc.id)}
+                                >
+                                  View
+                                </Button>
+                              )}
                               {doc.status === "submitted" && doc.uploader_role === "client" && (
                                 <>
                                   <Button

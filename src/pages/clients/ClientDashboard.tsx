@@ -35,6 +35,18 @@ interface ClientDocument {
   request_id?: string;
   created_at?: string;
   notes?: string;
+  uploader_role?: string;
+}
+
+interface TimelineNode {
+  id: string;
+  position?: { x?: number; y?: number };
+  data?: {
+    title?: string;
+    description?: string;
+    date?: string;
+    type?: string;
+  };
 }
 
 const ClientDashboard = () => {
@@ -43,6 +55,7 @@ const ClientDashboard = () => {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [requests, setRequests] = useState<DocumentRequest[]>([]);
   const [documents, setDocuments] = useState<ClientDocument[]>([]);
+  const [timelineNodes, setTimelineNodes] = useState<TimelineNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
@@ -59,6 +72,12 @@ const ClientDashboard = () => {
       setProfile(meRes.data || null);
       setRequests(reqRes.data || []);
       setDocuments(docRes.data || []);
+      try {
+        const timelineRes = await api.get("/client/timeline");
+        setTimelineNodes(timelineRes.data?.nodes || []);
+      } catch {
+        setTimelineNodes([]);
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || "Failed to load client portal data.");
     } finally {
@@ -112,8 +131,53 @@ const ClientDashboard = () => {
     }
   };
 
+  const handleOpenDocument = async (docId: string) => {
+    try {
+      const res = await api.get(`/client/documents/${docId}/download`);
+      const url = res.data?.signed_url;
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error("No download URL returned.");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to open document.");
+    }
+  };
+
   const requestedCount = requests.length;
   const submittedCount = documents.filter((doc) => doc.status === "submitted").length;
+
+  const clientUploads = documents.filter((doc) => doc.uploader_role === "client");
+  const agentFiles = documents.filter((doc) => doc.uploader_role === "agent");
+  const linkedAgentFiles = agentFiles.filter((doc) => doc.request_id);
+  const unlinkedAgentFiles = agentFiles.filter((doc) => !doc.request_id);
+
+  const latestDocByRequest = clientUploads
+    .filter((doc) => doc.request_id)
+    .reduce<Record<string, ClientDocument>>((acc, doc) => {
+      if (!doc.request_id) return acc;
+      const existing = acc[doc.request_id];
+      if (!existing) {
+        acc[doc.request_id] = doc;
+        return acc;
+      }
+      const existingTime = existing.created_at ? new Date(existing.created_at).getTime() : 0;
+      const currentTime = doc.created_at ? new Date(doc.created_at).getTime() : 0;
+      if (currentTime >= existingTime) {
+        acc[doc.request_id] = doc;
+      }
+      return acc;
+    }, {});
+
+  const timelineItems = [...timelineNodes].sort((a, b) => {
+    const dateA = a.data?.date ? new Date(a.data.date).getTime() : 0;
+    const dateB = b.data?.date ? new Date(b.data.date).getTime() : 0;
+    if (dateA && dateB) return dateA - dateB;
+    const posA = a.position?.x ?? 0;
+    const posB = b.position?.x ?? 0;
+    return posA - posB;
+  });
 
   return (
     <div className="bg-background min-h-screen p-6">
@@ -221,7 +285,14 @@ const ClientDashboard = () => {
                       <div key={req.id} className="rounded-md border border-muted p-3">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold">{req.title}</p>
-                          <Badge variant="outline" className="text-[10px] uppercase">{req.status}</Badge>
+                          <div className="flex items-center gap-2">
+                            {req.required && (
+                              <Badge variant="secondary" className="text-[9px] uppercase">
+                                Required
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-[10px] uppercase">{req.status}</Badge>
+                          </div>
                         </div>
                         {req.description && (
                           <p className="text-xs text-muted-foreground mt-1">{req.description}</p>
@@ -229,6 +300,62 @@ const ClientDashboard = () => {
                         {req.due_date && (
                           <p className="text-[10px] text-muted-foreground mt-2">Due {req.due_date}</p>
                         )}
+                        {latestDocByRequest[req.id] && (
+                          <p className="text-[10px] text-muted-foreground mt-2">
+                            Latest upload: {latestDocByRequest[req.id].status}
+                          </p>
+                        )}
+                        {linkedAgentFiles.filter((doc) => doc.request_id === req.id).length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-[10px] uppercase text-muted-foreground font-bold">
+                              Agent Attachments
+                            </p>
+                            {linkedAgentFiles
+                              .filter((doc) => doc.request_id === req.id)
+                              .map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between text-xs">
+                                  <span>{doc.file_name}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-[10px]"
+                                    onClick={() => handleOpenDocument(doc.id)}
+                                  >
+                                    View
+                                  </Button>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-muted shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Agent Shared Files</CardTitle>
+                <CardDescription>Templates and reference files from your agent</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {unlinkedAgentFiles.length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic">No shared files yet.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {unlinkedAgentFiles.map((doc) => (
+                      <div key={doc.id} className="rounded-md border border-muted p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold">{doc.file_name}</p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenDocument(doc.id)}
+                          >
+                            View
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -242,14 +369,21 @@ const ClientDashboard = () => {
                 <CardDescription>Submitted files and status</CardDescription>
               </CardHeader>
               <CardContent>
-                {documents.length === 0 ? (
+                {clientUploads.length === 0 ? (
                   <div className="text-xs text-muted-foreground italic">No uploads yet.</div>
                 ) : (
                   <div className="space-y-2">
-                    {documents.map((doc) => (
+                    {clientUploads.map((doc) => (
                       <div key={doc.id} className="rounded-md border border-muted p-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold">{doc.file_name}</p>
+                          <div>
+                            <p className="text-sm font-semibold">{doc.file_name}</p>
+                            {doc.request_id && (
+                              <p className="text-[10px] text-muted-foreground">
+                                Request: {requests.find((req) => req.id === doc.request_id)?.title || "Unlinked"}
+                              </p>
+                            )}
+                          </div>
                           <Badge variant="outline" className="text-[10px] uppercase">{doc.status}</Badge>
                         </div>
                         {doc.notes && (
@@ -270,9 +404,30 @@ const ClientDashboard = () => {
                 <CardDescription>Your progress and milestones</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-muted-foreground italic">
-                  Timeline view is coming soon.
-                </div>
+                {timelineItems.length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic">
+                    No timeline items yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {timelineItems.map((node) => (
+                      <div key={node.id} className="rounded-md border border-muted p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold">{node.data?.title || "Timeline step"}</p>
+                          <Badge variant="secondary" className="text-[9px] uppercase">
+                            {node.data?.type || "task"}
+                          </Badge>
+                        </div>
+                        {node.data?.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{node.data.description}</p>
+                        )}
+                        {node.data?.date && (
+                          <p className="text-[10px] text-muted-foreground mt-2">Target {node.data.date}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

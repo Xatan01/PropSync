@@ -16,12 +16,13 @@ import ClientDetail from "@/pages/agents/ClientDetail";
 
 // Client invite landing
 import ClientSetPassword from "@/pages/clients/ClientSetPassword";
+import ClientDashboard from "@/pages/clients/ClientDashboard";
 
 /**
  * Root redirect:
  * - Not logged in -> agent login
  * - Logged in agent -> /dashboard
- * - Logged in client -> /client-login (until you build client dashboard)
+ * - Logged in client -> /client-dashboard
  */
 const IndexRedirect = () => {
   const { user, loading } = useAuth();
@@ -34,7 +35,7 @@ const IndexRedirect = () => {
     (user as any)?.user_metadata?.role ||
     (user as any)?.app_metadata?.role;
 
-  if (role === "client") return <Navigate to="/client-login" replace />;
+  if (role === "client") return <Navigate to="/client-dashboard" replace />;
 
   return <Navigate to="/dashboard" replace />;
 };
@@ -55,6 +56,16 @@ function App() {
 
         {/* Root */}
         <Route path="/" element={<IndexRedirect />} />
+
+        {/* CLIENT ONLY */}
+        <Route
+          path="/client-dashboard"
+          element={
+            <ProtectedRoute allow={["client"]}>
+              <ClientDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         {/* AGENT ONLY */}
         <Route

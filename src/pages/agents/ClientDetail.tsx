@@ -474,9 +474,9 @@ const ClientDetail = () => {
   };
 
   return (
-    <div className="bg-background min-h-screen p-6">
+    <div className="bg-background min-h-screen p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-4 w-4" />
@@ -504,48 +504,50 @@ const ClientDetail = () => {
               <div className="text-sm text-muted-foreground italic">Client not found.</div>
             ) : (
               <>
-                <div className="relative flex w-full items-center justify-between px-2">
-                  <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2 -z-0" />
-                  {Object.entries(statusConfig).map(([key, cfg], index) => {
-                    const currentIndex = Object.keys(statusConfig).indexOf(dealStatus);
-                    const isActive = dealStatus === key;
-                    const isPast = currentIndex >= index;
+                <div className="w-full overflow-x-auto">
+                  <div className="relative flex min-w-[520px] items-center justify-between gap-6 px-2">
+                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2 -z-0" />
+                    {Object.entries(statusConfig).map(([key, cfg], index) => {
+                      const currentIndex = Object.keys(statusConfig).indexOf(dealStatus);
+                      const isActive = dealStatus === key;
+                      const isPast = currentIndex >= index;
 
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => {
-                          setDealStatus(key);
-                          handleDealStatusUpdate(key);
-                        }}
-                        className="relative z-10 flex flex-col items-center group transition-all"
-                        type="button"
-                      >
-                        <div
-                          className={`h-8 w-8 rounded-full border-4 flex items-center justify-center transition-all ${
-                            isActive
-                              ? "bg-primary border-background scale-125 shadow-lg"
-                              : isPast
-                              ? "bg-emerald-500 border-background"
-                              : "bg-muted border-background"
-                          }`}
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            setDealStatus(key);
+                            handleDealStatusUpdate(key);
+                          }}
+                          className="relative z-10 flex flex-col items-center group transition-all"
+                          type="button"
                         >
-                          {isPast && !isActive ? (
-                            <CheckCircle2 className="h-4 w-4 text-white" />
-                          ) : (
-                            <div className={`h-2 w-2 rounded-full ${isActive ? "bg-white" : "bg-muted-foreground"}`} />
-                          )}
-                        </div>
-                        <span
-                          className={`mt-2 text-[11px] font-bold uppercase tracking-tighter ${
-                            isActive ? "text-primary" : "text-muted-foreground"
-                          }`}
-                        >
-                          {cfg.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                          <div
+                            className={`h-8 w-8 rounded-full border-4 flex items-center justify-center transition-all ${
+                              isActive
+                                ? "bg-primary border-background scale-125 shadow-lg"
+                                : isPast
+                                ? "bg-emerald-500 border-background"
+                                : "bg-muted border-background"
+                            }`}
+                          >
+                            {isPast && !isActive ? (
+                              <CheckCircle2 className="h-4 w-4 text-white" />
+                            ) : (
+                              <div className={`h-2 w-2 rounded-full ${isActive ? "bg-white" : "bg-muted-foreground"}`} />
+                            )}
+                          </div>
+                          <span
+                            className={`mt-2 text-[11px] font-bold uppercase tracking-tighter ${
+                              isActive ? "text-primary" : "text-muted-foreground"
+                            }`}
+                          >
+                            {cfg.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4 border-t border-muted/50">
@@ -628,7 +630,7 @@ const ClientDetail = () => {
         </Card>
 
         <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid grid-cols-3 w-full max-w-md mx-auto h-12 bg-muted/50 p-1 border border-muted">
+          <TabsList className="grid grid-cols-3 w-full max-w-full sm:max-w-md mx-auto h-12 bg-muted/50 p-1 border border-muted">
           <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
@@ -747,7 +749,7 @@ const ClientDetail = () => {
                 <CardTitle className="text-base">Timeline</CardTitle>
                 <CardDescription>Review milestones and task progress.</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-between gap-3">
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-xs text-muted-foreground">
                   Open the timeline builder to manage tasks and deadlines.
                 </div>
@@ -892,7 +894,7 @@ const ClientDetail = () => {
                       <div className="space-y-2">
                         {docRequests.map((req) => (
                           <div key={req.id} className="rounded-md border border-muted p-3">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <p className="text-sm font-semibold">{req.title}</p>
                               <Badge variant="outline" className="text-[10px] uppercase">
                                 {req.status}
@@ -907,15 +909,15 @@ const ClientDetail = () => {
                               </p>
                             )}
                             {documents.some((doc) => doc.request_id === req.id && doc.uploader_role === "agent") && (
-                              <div className="mt-2 space-y-1">
-                                <p className="text-[10px] uppercase text-muted-foreground font-bold">
-                                  Attached Files
-                                </p>
-                                {documents
-                                  .filter((doc) => doc.request_id === req.id && doc.uploader_role === "agent")
-                                  .map((doc) => (
-                                    <div key={doc.id} className="flex items-center justify-between text-xs">
-                                      <span>{doc.file_name}</span>
+                          <div className="mt-2 space-y-1">
+                            <p className="text-[10px] uppercase text-muted-foreground font-bold">
+                              Attached Files
+                            </p>
+                            {documents
+                              .filter((doc) => doc.request_id === req.id && doc.uploader_role === "agent")
+                              .map((doc) => (
+                                    <div key={doc.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs">
+                                      <span className="truncate">{doc.file_name}</span>
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -926,8 +928,8 @@ const ClientDetail = () => {
                                       </Button>
                                     </div>
                                   ))}
-                              </div>
-                            )}
+                          </div>
+                        )}
                             <div className="mt-3 flex items-center gap-2">
                               <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>
                                 Edit
@@ -965,8 +967,8 @@ const ClientDetail = () => {
                           .filter((doc) => doc.uploader_role === "client")
                           .map((doc) => (
                           <div key={doc.id} className="rounded-md border border-muted p-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-semibold">{doc.file_name}</p>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-sm font-semibold truncate">{doc.file_name}</p>
                               <div className="flex items-center gap-2">
                                 {doc.uploader_role && (
                                   <Badge variant="secondary" className="text-[9px] uppercase">

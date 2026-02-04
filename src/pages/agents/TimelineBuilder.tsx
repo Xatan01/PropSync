@@ -311,19 +311,19 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
   }
 
   return (
-    <div className="bg-background h-screen flex flex-col overflow-hidden">
+    <div className="bg-background min-h-screen h-[100dvh] flex flex-col overflow-hidden">
       {/* --- Unified Header --- */}
-      <header className="border-b px-6 py-4 flex justify-between items-center bg-card shadow-sm z-10 shrink-0">
-        <div className="flex items-center gap-4">
+      <header className="border-b px-4 sm:px-6 py-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-card shadow-sm z-10 shrink-0">
+        <div className="flex flex-wrap items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Exit
           </Button>
 
           <Separator orientation="vertical" className="h-6" />
 
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <div className="font-bold text-lg tracking-tight">{headerInfo.title}</div>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="font-bold text-lg tracking-tight truncate">{headerInfo.title}</div>
 
               {/* Rename (pencil) */}
               {isTemplateMode && (
@@ -350,7 +350,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto lg:justify-end">
           {!isTemplateMode && (
             <Button
               variant="ghost"
@@ -375,9 +375,9 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden min-h-0">
         {/* ---------------- LEFT SIDEBAR ---------------- */}
-        <aside className="w-80 border-r bg-accent/5 p-4 flex flex-col gap-4 overflow-y-auto">
+        <aside className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r bg-accent/5 p-4 flex flex-col gap-4 overflow-y-auto max-h-[50vh] lg:max-h-none">
           {/* Template Library (Template Mode only) */}
           {isTemplateMode && (
             <Card className="shadow-sm border-muted">
@@ -434,7 +434,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
                       </Button>
                     </DropdownMenuTrigger>
 
-                    <DropdownMenuContent className="w-[300px] p-2" align="start">
+                    <DropdownMenuContent className="w-[260px] sm:w-[300px] p-2" align="start">
                       {filteredTemplates.length === 0 ? (
                         <div className="p-3 text-xs text-muted-foreground italic">No templates found for this category.</div>
                       ) : (
@@ -525,20 +525,20 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
         </aside>
 
         {/* ---------------- MAIN CANVAS ---------------- */}
-        <main className="flex-1 relative bg-slate-50">
+        <main className="flex-1 relative bg-slate-50 min-h-[50vh]">
           <Tabs defaultValue="canvas" className="h-full flex flex-col">
-            <div className="bg-card px-4 py-2 flex justify-between items-center border-b shadow-sm z-10">
-              <TabsList className="h-8 bg-muted/50 border">
-                <TabsTrigger value="canvas" className="text-[10px] px-6">
+            <div className="bg-card px-4 py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b shadow-sm z-10">
+              <TabsList className="h-8 bg-muted/50 border w-full sm:w-auto">
+                <TabsTrigger value="canvas" className="text-[10px] px-4 sm:px-6">
                   Roadmap Canvas
                 </TabsTrigger>
-                <TabsTrigger value="list" className="text-[10px] px-6">
+                <TabsTrigger value="list" className="text-[10px] px-4 sm:px-6">
                   Step Summary
                 </TabsTrigger>
               </TabsList>
 
               {!isTemplateMode && (
-                <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)} className="text-[10px] h-7 border-primary/20 hover:bg-primary/5">
+                <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)} className="text-[10px] h-7 border-primary/20 hover:bg-primary/5 w-full sm:w-auto">
                   Apply Template
                 </Button>
               )}
@@ -560,7 +560,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
               </ReactFlow>
             </TabsContent>
 
-            <TabsContent value="list" className="flex-1 m-0 p-8 overflow-y-auto">
+            <TabsContent value="list" className="flex-1 m-0 p-4 sm:p-8 overflow-y-auto">
               <div className="max-w-2xl mx-auto space-y-4">
                 {(nodes as any[]).map((n: any, i: number) => (
                   <Card key={n.id} className="flex gap-4 items-start p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedNodeId(n.id)}>

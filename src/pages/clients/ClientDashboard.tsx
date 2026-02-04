@@ -180,16 +180,18 @@ const ClientDashboard = () => {
   });
 
   return (
-    <div className="bg-background min-h-screen p-6">
+    <div className="bg-background min-h-screen p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               {profile?.name ? `Welcome, ${profile.name}` : "Client Portal"}
             </h1>
             <p className="text-sm text-muted-foreground">Your transaction workspace</p>
           </div>
-          <Button variant="outline" onClick={logout}>Logout</Button>
+          <Button variant="outline" onClick={logout} className="w-full sm:w-auto">
+            Logout
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -214,10 +216,16 @@ const ClientDashboard = () => {
         </div>
 
         <Tabs defaultValue="documents" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full max-w-md mx-auto h-12 bg-muted/50 p-1 border border-muted">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
-            <TabsTrigger value="documents" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Documents</TabsTrigger>
-            <TabsTrigger value="timeline" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Timeline</TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full max-w-full sm:max-w-md mx-auto h-12 bg-muted/50 p-1 border border-muted">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm">
+              Documents
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm">
+              Timeline
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -283,7 +291,7 @@ const ClientDashboard = () => {
                   <div className="space-y-3">
                     {requests.map((req) => (
                       <div key={req.id} className="rounded-md border border-muted p-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <p className="text-sm font-semibold">{req.title}</p>
                           <div className="flex items-center gap-2">
                             {req.required && (
@@ -313,18 +321,18 @@ const ClientDashboard = () => {
                             {linkedAgentFiles
                               .filter((doc) => doc.request_id === req.id)
                               .map((doc) => (
-                                <div key={doc.id} className="flex items-center justify-between text-xs">
-                                  <span>{doc.file_name}</span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6 text-[10px]"
-                                    onClick={() => handleOpenDocument(doc.id)}
-                                  >
-                                    View
-                                  </Button>
-                                </div>
-                              ))}
+                                  <div key={doc.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs">
+                                    <span className="truncate">{doc.file_name}</span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px]"
+                                      onClick={() => handleOpenDocument(doc.id)}
+                                    >
+                                      View
+                                    </Button>
+                                  </div>
+                                ))}
                           </div>
                         )}
                       </div>
@@ -346,8 +354,8 @@ const ClientDashboard = () => {
                   <div className="space-y-2">
                     {unlinkedAgentFiles.map((doc) => (
                       <div key={doc.id} className="rounded-md border border-muted p-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold">{doc.file_name}</p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-sm font-semibold truncate">{doc.file_name}</p>
                           <Button
                             size="sm"
                             variant="outline"
@@ -375,11 +383,11 @@ const ClientDashboard = () => {
                   <div className="space-y-2">
                     {clientUploads.map((doc) => (
                       <div key={doc.id} className="rounded-md border border-muted p-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-semibold">{doc.file_name}</p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate">{doc.file_name}</p>
                             {doc.request_id && (
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-[10px] text-muted-foreground truncate">
                                 Request: {requests.find((req) => req.id === doc.request_id)?.title || "Unlinked"}
                               </p>
                             )}

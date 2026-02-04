@@ -179,10 +179,10 @@ const AgentDashboard = () => {
   };
 
   return (
-    <div className="bg-background min-h-screen p-6">
+    <div className="bg-background min-h-screen p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center pb-2">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between pb-2">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
               Welcome back, <span className="text-primary">{user?.name || "Agent"}</span>
@@ -271,7 +271,7 @@ const AgentDashboard = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Client Management */}
             <Card className="border-muted shadow-sm overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between bg-accent/5 border-b py-4">
+              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-accent/5 border-b py-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary" />
                   <div>
@@ -280,9 +280,9 @@ const AgentDashboard = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                   <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-[120px] h-9 text-xs">
+                    <SelectTrigger className="w-full sm:w-[120px] h-9 text-xs">
                       <SelectValue placeholder="Sort" />
                     </SelectTrigger>
                     <SelectContent>
@@ -315,9 +315,9 @@ const AgentDashboard = () => {
                         <div
                           key={client.id}
                           onClick={() => navigate(`/clients/${client.id}`)}
-                          className="flex justify-between items-center p-5 hover:bg-accent/30 transition-all group cursor-pointer"
+                          className="flex flex-col gap-4 p-5 hover:bg-accent/30 transition-all group cursor-pointer sm:flex-row sm:items-center sm:justify-between"
                         >
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 min-w-0">
                             <Avatar className="h-11 w-11 border border-muted ring-2 ring-background group-hover:ring-primary/20 transition-all">
                               <AvatarImage
                                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${client.name}`}
@@ -325,9 +325,9 @@ const AgentDashboard = () => {
                               <AvatarFallback>{client.name?.[0]}</AvatarFallback>
                             </Avatar>
 
-                            <div>
-                              <div className="font-bold text-sm tracking-tight">{client.name}</div>
-                              <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <div className="min-w-0">
+                              <div className="font-bold text-sm tracking-tight truncate">{client.name}</div>
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
                                 <Home className="h-3 w-3" /> {client.property || "Unassigned"}
                               </div>
 
@@ -349,15 +349,15 @@ const AgentDashboard = () => {
                             </div>
                           </div>
 
-                        <div className="flex items-center gap-3">
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <EditClientModal client={client} onClientUpdated={fetchData} />
-                          </div>
-                          <Button
-                            variant={ui.variant}
-                            size="sm"
-                            className="h-8 rounded-md text-[11px] font-bold"
-                            disabled={ui.disabled}
+                          <div className="flex items-center gap-3 w-full sm:w-auto sm:justify-end">
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <EditClientModal client={client} onClientUpdated={fetchData} />
+                            </div>
+                            <Button
+                              variant={ui.variant}
+                              size="sm"
+                              className="h-8 rounded-md text-[11px] font-bold"
+                              disabled={ui.disabled}
                               onClick={(e) => inviteClient(client.id, e)}
                             >
                               {ui.label}
@@ -375,7 +375,7 @@ const AgentDashboard = () => {
 
             {/* Templates */}
             <Card className="border-muted shadow-sm overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between bg-primary/5 border-b py-4">
+              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-primary/5 border-b py-4">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary" />
                   <div>
@@ -388,7 +388,7 @@ const AgentDashboard = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => navigate("/templates/builder")}
-                  className="border-primary/20 hover:bg-primary/5"
+                  className="border-primary/20 hover:bg-primary/5 w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4 mr-2" /> Create New Template
                 </Button>

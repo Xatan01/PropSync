@@ -10,7 +10,11 @@ import { getTokenKey, getUserKey } from "@/utils/authTokens";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-const Login = () => {
+type LoginProps = {
+  role?: "agent" | "client";
+};
+
+const Login = ({ role: roleProp }: LoginProps) => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -18,8 +22,8 @@ const Login = () => {
   const { login } = useAuth(); // ✅ Use the login function from your context
 
   // Determine if current portal is for client or agent
-  const isClient = !location.pathname.includes("agent");
-  const role = isClient ? "client" : "agent";
+  const role = roleProp ?? (!location.pathname.includes("agent") ? "client" : "agent");
+  const isClient = role === "client";
 
   // Clear any old session when page loads
   useEffect(() => {

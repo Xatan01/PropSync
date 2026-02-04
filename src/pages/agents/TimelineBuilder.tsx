@@ -9,6 +9,7 @@ import ReactFlow, {
   Handle,
   Position,
   ReactFlowProvider,
+  BackgroundVariant,
 } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -555,7 +556,7 @@ const BuilderContent = ({ isTemplateMode = false }: BuilderProps) => {
                 fitView
                 className="bg-slate-50"
               >
-                <Background variant="dots" gap={30} size={1} color="#e2e8f0" />
+                <Background variant={BackgroundVariant.Dots} gap={30} size={1} color="#e2e8f0" />
                 <Controls className="bg-white border rounded-lg shadow-lg" />
               </ReactFlow>
             </TabsContent>

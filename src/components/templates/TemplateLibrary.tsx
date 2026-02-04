@@ -4,16 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Home, 
-  Building, 
-  Key, 
-  FileText, 
-  Search, 
+import {
+  Home,
+  Building,
+  Key,
+  FileText,
+  Search,
   Plus,
   Clock,
   Users,
-  DragHandleDots2Icon as Grip
+  GripVertical as Grip,
 } from "lucide-react";
 
 interface TemplateItem {

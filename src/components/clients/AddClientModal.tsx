@@ -39,15 +39,38 @@ export default function AddClientModal({ onClientAdded }: { onClientAdded: () =>
       <DialogTrigger asChild>
         <Button>+ Add Client</Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Add New Client</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-          <div><Label>Name</Label><Input name="name" value={form.name} onChange={handleChange} required /></div>
-          <div><Label>Email</Label><Input name="email" value={form.email} onChange={handleChange} type="email" /></div>
-          <div><Label>Phone</Label><Input name="phone" value={form.phone} onChange={handleChange} /></div>
-          <div><Label>Property</Label><Input name="property" value={form.property} onChange={handleChange} /></div>
-          <div><Label>Transaction Type</Label><Input name="transactionType" value={form.transactionType} onChange={handleChange} /></div>
-          <Button type="submit" className="w-full" disabled={loading}>{loading ? "Saving..." : "Save Client"}</Button>
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[85vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>Add New Client</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="space-y-3 overflow-y-auto pr-1 max-h-[60vh]">
+            <div>
+              <Label>Name</Label>
+              <Input name="name" value={form.name} onChange={handleChange} required />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input name="email" value={form.email} onChange={handleChange} type="email" />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input name="phone" value={form.phone} onChange={handleChange} />
+            </div>
+            <div>
+              <Label>Property</Label>
+              <Input name="property" value={form.property} onChange={handleChange} />
+            </div>
+            <div>
+              <Label>Transaction Type</Label>
+              <Input name="transactionType" value={form.transactionType} onChange={handleChange} />
+            </div>
+          </div>
+          <div className="pt-2 border-t">
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Saving..." : "Save Client"}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

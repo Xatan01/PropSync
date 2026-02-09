@@ -76,8 +76,8 @@ export default function AddClientModal({ onClientAdded }: { onClientAdded: () =>
   };
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 overscroll-contain pb-20">
+    <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 overscroll-contain touch-pan-y pb-24">
         <div className="grid gap-2">
           <Label htmlFor="name">Name</Label>
           <Input id="name" name="name" value={form.name} onChange={handleChange} required autoFocus />
@@ -104,10 +104,10 @@ export default function AddClientModal({ onClientAdded }: { onClientAdded: () =>
           />
         </div>
       </div>
-      <div className="p-4 border-t bg-background sticky bottom-0">
+      <div className="p-4 border-t bg-background flex-shrink-0">
         <Button
           type="submit"
-          className="w-full h-10 bg-black text-white hover:bg-black/90"
+          className="w-full h-12 text-base bg-black text-white hover:bg-black/90 active:scale-[0.98] transition-transform"
           disabled={loading}
         >
           {loading ? "Saving..." : "Save Client"}
@@ -122,8 +122,8 @@ export default function AddClientModal({ onClientAdded }: { onClientAdded: () =>
         <DialogTrigger asChild>
           <Button>+ Add Client</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden max-h-[85vh]">
-          <DialogHeader className="p-6 border-b text-left">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden max-h-[85vh] flex flex-col">
+          <DialogHeader className="p-6 border-b text-left flex-shrink-0">
             <DialogTitle>Add New Client</DialogTitle>
           </DialogHeader>
           {formContent}
@@ -133,15 +133,15 @@ export default function AddClientModal({ onClientAdded }: { onClientAdded: () =>
   }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen} shouldScaleBackground={false}>
       <DrawerTrigger asChild>
         <Button>+ Add Client</Button>
       </DrawerTrigger>
-      <DrawerContent className="h-[92dvh] p-0">
-        <DrawerHeader className="border-b text-left">
+      <DrawerContent className="h-[94dvh] flex flex-col p-0">
+        <DrawerHeader className="border-b text-left flex-shrink-0">
           <DrawerTitle>Add New Client</DrawerTitle>
         </DrawerHeader>
-        <div className="flex-1 overflow-hidden">{formContent}</div>
+        <div className="flex-1 overflow-hidden min-h-0">{formContent}</div>
       </DrawerContent>
     </Drawer>
   );

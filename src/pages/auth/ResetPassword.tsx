@@ -15,6 +15,10 @@ const supabase = createClient(
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const roleParam =
+    new URLSearchParams(window.location.search).get("role") === "client"
+      ? "client"
+      : "agent";
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [token, setToken] = useState<string | null>(null);
@@ -59,7 +63,7 @@ export default function ResetPassword() {
       if (error) throw error;
 
       alert("✅ Password updated successfully. You can now log in.");
-      navigate("/agent-login");
+      navigate(roleParam === "client" ? "/client-login" : "/agent-login");
     } catch (err) {
       alert("❌ " + (err as Error).message);
     }

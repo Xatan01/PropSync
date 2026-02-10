@@ -49,6 +49,7 @@ function App() {
         <Route path="/agent-login" element={<Login role="agent" />} />
         <Route path="/client-login" element={<Login role="client" />} />
         <Route path="/forgot-password" element={<ForgetPassword />} />
+        <Route path="/client-forgot-password" element={<ForgetPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* ✅ Client invite landing (PUBLIC) */}
